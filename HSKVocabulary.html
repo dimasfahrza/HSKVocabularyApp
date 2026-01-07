@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mandarin Master - Full Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Poppins:wght@400;600&display=swap');
+        
+        body { font-family: 'Poppins', sans-serif; background: #f1f5f9; }
+        .zh-text { font-family: 'Noto Sans SC', sans-serif; }
+        
+        /* Animations */
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        .slide-up { animation: slideUp 0.4s ease-out; }
+        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+        
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.5); }
+        .btn-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1); }
+        
+        /* Timer & Mic Styles */
+        .timer-danger { color: #ef4444; animation: pulse 0.5s infinite; font-weight: bold; }
+        .mic-active { background-color: #ef4444 !important; color: white !important; border-color: #ef4444 !important; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+        /* Writing Canvas Area */
+        #writing-canvas-container {
+            background-image: linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center text-slate-800 bg-gradient-to-br from-blue-50 to-indigo-100">
+
+    <div id="screen-home" class="w-full max-w-5xl p-6 fade-in text-center">
+        <h1 class="text-5xl font-bold mb-2 tracking-tight">Mandarin <span class="text-indigo-600">Master</span></h1>
+        <p class="text-slate-500 text-lg mb-10">Select your proficiency level</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 px-4">
+            <button onclick="selectLevel(1)" class="btn-card glass-panel p-8 rounded-3xl shadow-lg border-t-4 border-emerald-400 transition group text-left relative overflow-hidden">
+                <div class="text-emerald-500 text-4xl mb-4 bg-emerald-50 w-16 h-16 rounded-2xl flex items-center justify-center"><i class="fas fa-leaf"></i></div>
+                <h2 class="text-2xl font-bold">HSK Level 1</h2>
+                <p class="text-gray-400 text-sm mt-1">Basic (150 Words)</p>
+            </button>
+
+            <button onclick="selectLevel(2)" class="btn-card glass-panel p-8 rounded-3xl shadow-lg border-t-4 border-blue-400 transition group text-left relative overflow-hidden">
+                <div class="text-blue-500 text-4xl mb-4 bg-blue-50 w-16 h-16 rounded-2xl flex items-center justify-center"><i class="fas fa-book-open"></i></div>
+                <h2 class="text-2xl font-bold">HSK Level 2</h2>
+                <p class="text-gray-400 text-sm mt-1">Intermediate (300 Words)</p>
+            </button>
+
+            <button onclick="selectLevel(3)" class="btn-card glass-panel p-8 rounded-3xl shadow-lg border-t-4 border-orange-400 transition group text-left relative overflow-hidden">
+                <div class="text-orange-500 text-4xl mb-4 bg-orange-50 w-16 h-16 rounded-2xl flex items-center justify-center"><i class="fas fa-graduation-cap"></i></div>
+                <h2 class="text-2xl font-bold">HSK Level 3</h2>
+                <p class="text-gray-400 text-sm mt-1">Advanced (600 Words)</p>
+            </button>
+        </div>
+        <p id="db-status" class="mt-8 text-gray-400 text-xs font-mono">Loading system...</p>
+    </div>
+
+    <div id="screen-mode" class="hidden w-full max-w-4xl p-6 slide-up text-center">
+        <button onclick="goHome()" class="mb-8 text-slate-400 hover:text-slate-600 flex items-center justify-center gap-2 mx-auto"><i class="fas fa-arrow-left"></i> Change Level</button>
+        
+        <h2 class="text-3xl font-bold mb-8">Choose Training Mode</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 px-8">
+            <button onclick="startMode('quiz')" class="btn-card bg-white p-8 rounded-3xl shadow-xl hover:shadow-2xl transition border-2 border-transparent hover:border-indigo-500 group">
+                <div class="bg-indigo-100 text-indigo-600 w-20 h-20 rounded-full flex items-center justify-center text-3xl mx-auto mb-6 group-hover:scale-110 transition">
+                    <i class="fas fa-stopwatch"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-slate-800">Speed Quiz</h3>
+                <p class="text-slate-500 mt-2">Guess pinyin, microphone enabled, time attack.</p>
+            </button>
+
+            <button onclick="startMode('writing')" class="btn-card bg-white p-8 rounded-3xl shadow-xl hover:shadow-2xl transition border-2 border-transparent hover:border-emerald-500 group">
+                <div class="bg-emerald-100 text-emerald-600 w-20 h-20 rounded-full flex items-center justify-center text-3xl mx-auto mb-6 group-hover:scale-110 transition">
+                    <i class="fas fa-pen-fancy"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-slate-800">Stroke Writer</h3>
+                <p class="text-slate-500 mt-2">Practice writing Hanzi with correct stroke order.</p>
+            </button>
+        </div>
+    </div>
+
+    <div id="screen-game-quiz" class="hidden w-full max-w-lg fade-in px-4">
+        <div class="flex justify-between items-center mb-4">
+            <button onclick="goModeSelect()" class="text-slate-400 hover:text-slate-600 text-sm font-bold"><i class="fas fa-times mr-1"></i> Quit</button>
+            <div class="flex items-center gap-3">
+                <div class="bg-white px-3 py-1 rounded-lg text-sm font-bold shadow-sm border"><span id="quiz-current">1</span>/<span id="quiz-total">10</span></div>
+                <div class="bg-indigo-600 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
+                    <i class="fas fa-clock"></i> <span id="timer-text">15</span>s
+                </div>
+            </div>
+        </div>
+
+        <div id="card-quiz" class="glass-panel rounded-[2rem] shadow-2xl p-8 text-center relative overflow-hidden bg-white">
+            <div class="mb-8 cursor-pointer" onclick="playAudio(currentWord.char)">
+                <h1 id="quiz-char" class="zh-text text-8xl font-bold text-slate-800 hover:scale-105 transition"></h1>
+                <p class="text-slate-400 text-xs mt-2 font-bold uppercase tracking-widest">Tap to Listen</p>
+            </div>
+
+            <div id="quiz-feedback" class="h-12 mb-2 flex items-center justify-center text-sm font-bold"></div>
+
+            <div class="flex gap-2 w-full mb-4">
+                <input type="text" id="quiz-input" class="w-full bg-slate-100 border-2 border-slate-200 rounded-xl py-3 px-4 text-center text-xl font-bold outline-none focus:bg-white focus:border-indigo-500 transition" placeholder="Pinyin..." autocomplete="off">
+                <button id="mic-btn" onclick="toggleSpeech()" class="w-14 bg-white border-2 border-slate-200 rounded-xl text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition text-lg"><i class="fas fa-microphone"></i></button>
+            </div>
+
+            <div class="flex justify-center gap-2 mb-6">
+                <button onclick="addTone('1')" class="tone-btn w-10 h-10 bg-slate-50 rounded-lg hover:bg-slate-100 border border-slate-200">ˉ</button>
+                <button onclick="addTone('2')" class="tone-btn w-10 h-10 bg-slate-50 rounded-lg hover:bg-slate-100 border border-slate-200">ˊ</button>
+                <button onclick="addTone('3')" class="tone-btn w-10 h-10 bg-slate-50 rounded-lg hover:bg-slate-100 border border-slate-200">ˇ</button>
+                <button onclick="addTone('4')" class="tone-btn w-10 h-10 bg-slate-50 rounded-lg hover:bg-slate-100 border border-slate-200">ˋ</button>
+            </div>
+
+            <button onclick="checkQuizAnswer()" id="btn-quiz-check" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-indigo-700 transition">CHECK</button>
+            <button onclick="nextQuizWord()" id="btn-quiz-next" class="hidden w-full bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-emerald-600 transition">NEXT <i class="fas fa-arrow-right ml-2"></i></button>
+        </div>
+    </div>
+
+    <div id="screen-game-writing" class="hidden w-full max-w-lg fade-in px-4">
+        <div class="flex justify-between items-center mb-6">
+            <button onclick="goModeSelect()" class="text-slate-400 hover:text-slate-600 text-sm font-bold"><i class="fas fa-times mr-1"></i> Quit</button>
+            <div class="bg-white px-3 py-1 rounded-lg text-sm font-bold shadow-sm border"><span id="write-current">1</span>/<span id="write-total">10</span></div>
+        </div>
+
+        <div class="glass-panel rounded-[2rem] shadow-2xl p-6 text-center bg-white">
+            <p class="text-slate-500 text-sm mb-4">Trace the character below:</p>
+            
+            <div class="mb-6">
+                <h2 id="write-pinyin" class="text-2xl font-bold text-indigo-600 mb-1"></h2>
+                <p id="write-mean" class="text-sm text-slate-400"></p>
+            </div>
+
+            <div id="writing-canvas-container" class="w-[250px] h-[250px] mx-auto bg-white border-2 border-slate-200 rounded-xl mb-6 relative shadow-inner cursor-crosshair touch-none">
+                <div id="target-div"></div>
+            </div>
+            
+            <div id="write-feedback" class="h-8 text-sm font-bold text-emerald-500 mb-4 opacity-0 transition">Excellent!</div>
+
+            <div class="flex gap-2">
+                <button onclick="animateWriter()" class="flex-1 bg-indigo-50 text-indigo-600 font-bold py-3 rounded-xl hover:bg-indigo-100 transition text-sm">
+                    <i class="fas fa-play mr-1"></i> Demo
+                </button>
+                
+                <button id="btn-hint" onclick="toggleHint()" class="flex-1 bg-yellow-50 text-yellow-600 font-bold py-3 rounded-xl hover:bg-yellow-100 transition text-sm">
+                    <i class="fas fa-lightbulb mr-1"></i> Hint
+                </button>
+                
+                <button onclick="resetWriter()" class="flex-1 bg-slate-100 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-200 transition text-sm">
+                    <i class="fas fa-eraser mr-1"></i> Clear
+                </button>
+            </div>
+            
+            <button onclick="nextWritingWord()" id="btn-write-next" class="hidden w-full mt-4 bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-emerald-600 transition slide-up">CONTINUE</button>
+        </div>
+    </div>
+
+    <div id="screen-result" class="hidden w-full max-w-md text-center fade-in px-4">
+        <div class="glass-panel rounded-[2.5rem] shadow-2xl p-10 bg-white">
+            <div class="text-7xl mb-6">🎉</div>
+            <h2 class="text-3xl font-bold mb-2 text-slate-800">Session Complete!</h2>
+            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-8 mt-6">
+                <div class="text-5xl font-bold text-indigo-600" id="result-score">100%</div>
+                <div class="text-xs text-slate-400 uppercase font-bold mt-2">Accuracy</div>
+            </div>
+            <button onclick="goModeSelect()" class="w-full bg-slate-800 text-white font-bold py-4 rounded-xl hover:bg-slate-900 shadow-lg">Back to Menu</button>
+        </div>
+    </div>
+
+    <script src="database.js"></script>
+    <script>
+        // --- GLOBAL STATE ---
+        let selectedLevel = 1;
+        let sessionWords = [];
+        let currentIndex = 0;
+        let currentWord = {};
+        
+        // Screens
+        const screens = {
+            home: document.getElementById('screen-home'),
+            mode: document.getElementById('screen-mode'),
+            quiz: document.getElementById('screen-game-quiz'),
+            writing: document.getElementById('screen-game-writing'),
+            result: document.getElementById('screen-result')
+        };
+
+        // --- NAVIGATION ---
+        function switchScreen(id) {
+            Object.values(screens).forEach(el => el.classList.add('hidden'));
+            screens[id].classList.remove('hidden');
+        }
+
+        function selectLevel(lvl) {
+            if(typeof database === 'undefined') { alert("Missing database.js!"); return; }
+            selectedLevel = lvl;
+            switchScreen('mode');
+        }
+
+        function goHome() { switchScreen('home'); }
+        function goModeSelect() { 
+            stopTimer(); 
+            stopSpeech();
+            switchScreen('mode'); 
+        }
+
+        function startMode(mode) {
+            // Load Data & Shuffle
+            let data = database[selectedLevel] || database[1];
+            sessionWords = [...data].sort(() => 0.5 - Math.random()); // Shuffle
+            currentIndex = 0;
+            
+            if (mode === 'quiz') initQuizMode();
+            else initWritingMode();
+        }
+
+        // ==========================================
+        // MODE 1: SPEED QUIZ LOGIC
+        // ==========================================
+        let quizCorrect = 0;
+        let timerInterval;
+        let timeLeft = 15;
+        let recognition;
+        let isListening = false;
+
+        function initQuizMode() {
+            quizCorrect = 0;
+            initSpeech();
+            switchScreen('quiz');
+            document.getElementById('quiz-total').innerText = sessionWords.length;
+            loadQuizCard();
+        }
+
+        function loadQuizCard() {
+            currentWord = sessionWords[currentIndex];
+            const elChar = document.getElementById('quiz-char');
+            const elInput = document.getElementById('quiz-input');
+            const elFeedback = document.getElementById('quiz-feedback');
+            
+            document.getElementById('quiz-current').innerText = currentIndex + 1;
+            
+            // Render char text only
+            elChar.innerText = currentWord.char;
+            
+            // Reset UI
+            elInput.value = "";
+            elInput.disabled = false;
+            elInput.focus();
+            elFeedback.innerText = "";
+            document.getElementById('btn-quiz-check').classList.remove('hidden');
+            document.getElementById('btn-quiz-next').classList.add('hidden');
+            document.getElementById('card-quiz').classList.remove('shake');
+
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeLeft = 15;
+            const elTimer = document.getElementById('timer-text');
+            elTimer.innerText = timeLeft;
+            elTimer.parentElement.classList.remove('bg-red-500');
+            elTimer.parentElement.classList.add('bg-indigo-600');
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                elTimer.innerText = timeLeft;
+                if(timeLeft <= 5) {
+                    elTimer.parentElement.classList.remove('bg-indigo-600');
+                    elTimer.parentElement.classList.add('bg-red-500');
+                }
+                if(timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    handleQuizResult(false, "Time's Up!");
+                }
+            }, 1000);
+        }
+        function stopTimer() { clearInterval(timerInterval); }
+
+        function checkQuizAnswer() {
+            stopTimer();
+            stopSpeech();
+            const elInput = document.getElementById('quiz-input');
+            
+            let input = elInput.value.toLowerCase().replace(/\s+/g, '');
+            if(input.includes("heard:")) input = "wrong"; // Anti-cheat speech error
+
+            const cleanPinyin = currentWord.pinyin.toLowerCase().replace(/\s+/g, '');
+            const noToneInput = input.replace(/[0-9]/g, '');
+            const noToneAns = cleanPinyin.replace(/[0-9]/g, '');
+
+            if (input === cleanPinyin || noToneInput === noToneAns) {
+                handleQuizResult(true, "Correct!");
+            } else {
+                handleQuizResult(false, `Wrong! It's: ${currentWord.pinyin}`);
+            }
+        }
+
+        function handleQuizResult(isCorrect, msg) {
+            const elFeedback = document.getElementById('quiz-feedback');
+            const elInput = document.getElementById('quiz-input');
+            
+            elInput.disabled = true;
+            document.getElementById('btn-quiz-check').classList.add('hidden');
+            document.getElementById('btn-quiz-next').classList.remove('hidden');
+            document.getElementById('btn-quiz-next').focus();
+
+            if(isCorrect) {
+                quizCorrect++;
+                elFeedback.innerHTML = `<span class="text-emerald-500"><i class="fas fa-check"></i> ${msg} (${currentWord.mean})</span>`;
+                elInput.classList.add('border-emerald-500', 'bg-emerald-50');
+                playAudio(currentWord.char);
+            } else {
+                document.getElementById('card-quiz').classList.add('shake');
+                elFeedback.innerHTML = `<span class="text-red-500"><i class="fas fa-times"></i> ${msg}</span>`;
+                elInput.classList.add('border-red-500', 'bg-red-50');
+            }
+        }
+
+        function nextQuizWord() {
+            if(currentIndex < sessionWords.length - 1) {
+                currentIndex++;
+                loadQuizCard();
+            } else {
+                finishSession(quizCorrect);
+            }
+        }
+
+        // Speech Logic
+        function initSpeech() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechAPI();
+                recognition.lang = 'zh-CN';
+                recognition.continuous = false;
+                
+                recognition.onstart = () => { isListening = true; document.getElementById('mic-btn').classList.add('mic-active'); };
+                recognition.onend = () => { isListening = false; document.getElementById('mic-btn').classList.remove('mic-active'); };
+                recognition.onresult = (e) => {
+                    const transcript = e.results[0][0].transcript.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+                    if(transcript === currentWord.char) {
+                        document.getElementById('quiz-input').value = currentWord.pinyin;
+                        checkQuizAnswer();
+                    } else {
+                        document.getElementById('quiz-input').value = `[Heard: ${transcript}]`;
+                    }
+                };
+            }
+        }
+        function toggleSpeech() { if(isListening) recognition.stop(); else recognition.start(); }
+        function stopSpeech() { if(isListening) recognition.stop(); }
+
+        // ==========================================
+        // MODE 2: WRITING LOGIC (HANZI WRITER)
+        // ==========================================
+        let writer;
+        let writeCorrect = 0;
+        let isHintVisible = false; // Variable pelacak Hint
+
+        function initWritingMode() {
+            writeCorrect = 0;
+            switchScreen('writing');
+            document.getElementById('write-total').innerText = sessionWords.length;
+            loadWritingCard();
+        }
+
+        function loadWritingCard() {
+            currentWord = sessionWords[currentIndex];
+            document.getElementById('write-current').innerText = currentIndex + 1;
+            document.getElementById('write-pinyin').innerText = currentWord.pinyin;
+            document.getElementById('write-mean').innerText = currentWord.mean;
+            
+            // Reset UI
+            document.getElementById('write-feedback').style.opacity = "0";
+            document.getElementById('btn-write-next').classList.add('hidden');
+            document.getElementById('target-div').innerHTML = ""; 
+            
+            // Reset Hint UI
+            isHintVisible = false;
+            updateHintButtonUI();
+
+            // Initialize Hanzi Writer QUIZ
+            const charToDraw = currentWord.char.charAt(0);
+
+            writer = HanziWriter.create('target-div', charToDraw, {
+                width: 250,
+                height: 250,
+                padding: 10,
+                showOutline: false, // Default: No Outline (Expert Mode)
+                strokeAnimationSpeed: 1,
+                delayBetweenStrokes: 200,
+                strokeColor: '#4f46e5', // Indigo stroke
+                highlightColor: '#10b981', // Green when correct stroke
+                outlineColor: '#cbd5e1', // Light grey guide for hint
+                drawingWidth: 20, 
+                showCharacter: false 
+            });
+
+            // START QUIZ
+            writer.quiz({
+                onMistake: function(strokeData) { console.log('Mistake'); },
+                onCorrectStroke: function(strokeData) { console.log('Correct stroke'); },
+                onComplete: function(summaryData) { handleWritingSuccess(); }
+            });
+        }
+
+        function toggleHint() {
+            if (!writer) return;
+            if (isHintVisible) {
+                writer.hideOutline();
+                isHintVisible = false;
+            } else {
+                writer.showOutline();
+                isHintVisible = true;
+            }
+            updateHintButtonUI();
+        }
+
+        function updateHintButtonUI() {
+            const btn = document.getElementById('btn-hint');
+            if (isHintVisible) {
+                btn.innerHTML = `<i class="fas fa-eye-slash mr-1"></i> Hide`;
+                btn.className = "flex-1 bg-yellow-200 text-yellow-800 font-bold py-3 rounded-xl hover:bg-yellow-300 transition text-sm shadow-inner";
+            } else {
+                btn.innerHTML = `<i class="fas fa-lightbulb mr-1"></i> Hint`;
+                btn.className = "flex-1 bg-yellow-50 text-yellow-600 font-bold py-3 rounded-xl hover:bg-yellow-100 transition text-sm";
+            }
+        }
+
+        function handleWritingSuccess() {
+            writeCorrect++;
+            const elFeed = document.getElementById('write-feedback');
+            elFeed.innerText = "Perfect! Character Complete.";
+            elFeed.style.opacity = "1";
+            
+            playAudio(currentWord.char);
+            document.getElementById('btn-write-next').classList.remove('hidden');
+        }
+
+        function nextWritingWord() {
+            if(currentIndex < sessionWords.length - 1) {
+                currentIndex++;
+                loadWritingCard();
+            } else {
+                finishSession(writeCorrect);
+            }
+        }
+
+        function animateWriter() { if(writer) writer.animateCharacter(); }
+        function resetWriter() { loadWritingCard(); } // Reload to reset quiz
+
+        // ==========================================
+        // UTILS & SHARED
+        // ==========================================
+        function finishSession(scoreCount) {
+            switchScreen('result');
+            const accuracy = Math.round((scoreCount / sessionWords.length) * 100);
+            document.getElementById('result-score').innerText = `${accuracy}%`;
+        }
+
+        function playAudio(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = "zh-CN"; 
+            utterance.rate = 0.8;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function addTone(num) { 
+            const inp = document.getElementById('quiz-input');
+            inp.value += num; 
+            inp.focus(); 
+        }
+        
+        // Window Load Check
+        window.onload = function() {
+            if(typeof database === 'undefined') {
+                document.getElementById('db-status').innerText = "❌ Database Error";
+                document.getElementById('db-status').className = "mt-8 text-red-500 font-bold";
+            } else {
+                document.getElementById('db-status').innerText = "System Ready v3.5";
+                document.getElementById('db-status').className = "mt-8 text-emerald-500 font-bold";
+            }
+        };
+    </script>
+</body>
+</html>
