@@ -1,6 +1,6 @@
 # HSK Vocabulary
 
-**HASK Vocabularir** is an interactive, gamified web application designed to help users master Chinese HSK vocabulary. It combines **Speed Quizzes** with **Stroke Order Writing Practice** to ensure comprehensive learning (Reading, Listening, Speaking, and Writing).
+**HSK Vocabulary** is an interactive, gamified web application designed to help users master Chinese HSK vocabulary. It combines **Speed Quizzes** with **Stroke Order Writing Practice** to ensure comprehensive learning (Reading, Listening, Speaking, and Writing).
 
 ## ✨ Key Features
 
