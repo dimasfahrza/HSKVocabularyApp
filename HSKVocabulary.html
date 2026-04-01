@@ -3,491 +3,1671 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mandarin Master - Full Suite</title>
+    <title>汉字 HanziPath — HSK Mastery</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Poppins:wght@400;600&display=swap');
-        
-        body { font-family: 'Poppins', sans-serif; background: #f1f5f9; }
-        .zh-text { font-family: 'Noto Sans SC', sans-serif; }
-        
-        /* Animations */
-        .fade-in { animation: fadeIn 0.4s ease-out; }
-        .slide-up { animation: slideUp 0.4s ease-out; }
-        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
-        
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
-        
-        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.5); }
-        .btn-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1); }
-        
-        /* Timer & Mic Styles */
-        .timer-danger { color: #ef4444; animation: pulse 0.5s infinite; font-weight: bold; }
-        .mic-active { background-color: #ef4444 !important; color: white !important; border-color: #ef4444 !important; animation: pulse 1s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;700;900&family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-        /* Writing Canvas Area */
-        #writing-canvas-container {
-            background-image: linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px);
-            background-size: 50px 50px;
+    <style>
+        :root {
+            --ink: #0e0e12;
+            --paper: #f5f0e8;
+            --red: #c0392b;
+            --red-bright: #e74c3c;
+            --gold: #d4a017;
+            --gold-light: #f0c040;
+            --jade: #27ae60;
+            --jade-bright: #2ecc71;
+            --muted: #888;
+            --panel: rgba(255,255,255,0.06);
+            --border: rgba(255,255,255,0.12);
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            background: var(--ink);
+            color: #e8e4dc;
+            font-family: 'DM Mono', monospace;
+            overflow-x: hidden;
+        }
+
+        .zh { font-family: 'Noto Sans SC', sans-serif; }
+        .serif { font-family: 'DM Serif Display', serif; }
+
+        /* --- NOISE TEXTURE OVERLAY --- */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* --- RADIAL GLOW BG --- */
+        .glow-bg {
+            position: fixed; inset: 0;
+            background: radial-gradient(ellipse 80% 60% at 20% 10%, rgba(192,57,43,0.08) 0%, transparent 60%),
+                        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(212,160,23,0.06) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        /* --- SCREENS --- */
+        .screen { display: none; min-height: 100vh; padding: 24px 16px; }
+        .screen.active { display: flex; flex-direction: column; align-items: center; }
+
+        /* --- CARD STYLE --- */
+        .card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(12px);
+        }
+        .card-glow {
+            box-shadow: 0 0 0 1px rgba(212,160,23,0.2), 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        /* --- LEVEL CARDS --- */
+        .level-card {
+            position: relative;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 28px 24px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            overflow: hidden;
+        }
+        .level-card::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: var(--accent-grad);
+            opacity: 0;
+            transition: opacity 0.3s;
+            border-radius: 20px;
+        }
+        .level-card:hover {
+            transform: translateY(-6px) scale(1.01);
+            border-color: rgba(255,255,255,0.25);
+            box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+        }
+        .level-card:hover::before { opacity: 1; }
+        .level-card .accent-bar {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 0 0 20px 20px;
+        }
+
+        /* --- BUTTONS --- */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--red) 0%, #8b1a1a 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 14px 28px;
+            font-family: 'DM Mono', monospace;
+            font-weight: 500;
+            font-size: 0.9rem;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            transition: all 0.25s;
+            box-shadow: 0 4px 20px rgba(192,57,43,0.35);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(192,57,43,0.5);
+            background: linear-gradient(135deg, var(--red-bright) 0%, var(--red) 100%);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.07);
+            color: #e8e4dc;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 14px;
+            padding: 12px 24px;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold) 0%, #a07010 100%);
+            color: #0e0e12;
+            border: none;
+            border-radius: 14px;
+            padding: 14px 28px;
+            font-family: 'DM Mono', monospace;
+            font-weight: 500;
+            font-size: 0.9rem;
+            letter-spacing: 0.06em;
+            cursor: pointer;
+            transition: all 0.25s;
+            box-shadow: 0 4px 20px rgba(212,160,23,0.3);
+        }
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(212,160,23,0.45);
+            background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 100%);
+        }
+
+        .btn-jade {
+            background: linear-gradient(135deg, var(--jade) 0%, #1a6e3e 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 14px 28px;
+            font-family: 'DM Mono', monospace;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.25s;
+            box-shadow: 0 4px 20px rgba(39,174,96,0.3);
+        }
+        .btn-jade:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(39,174,96,0.45);
+        }
+
+        /* --- INPUT STYLES --- */
+        .input-field {
+            background: rgba(255,255,255,0.06);
+            border: 1.5px solid rgba(255,255,255,0.15);
+            border-radius: 12px;
+            color: #e8e4dc;
+            font-family: 'DM Mono', monospace;
+            font-size: 1.1rem;
+            padding: 14px 18px;
+            outline: none;
+            transition: all 0.25s;
+            text-align: center;
+        }
+        .input-field::placeholder { color: rgba(255,255,255,0.3); }
+        .input-field:focus {
+            border-color: var(--gold);
+            background: rgba(255,255,255,0.1);
+            box-shadow: 0 0 0 3px rgba(212,160,23,0.15);
+        }
+        .input-field.correct {
+            border-color: var(--jade-bright);
+            background: rgba(39,174,96,0.12);
+        }
+        .input-field.wrong {
+            border-color: var(--red-bright);
+            background: rgba(192,57,43,0.12);
+        }
+
+        /* --- TONE BUTTONS --- */
+        .tone-btn {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px;
+            color: var(--gold);
+            flex: 1;
+            height: 44px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1px;
+            padding: 4px 2px;
+        }
+        .tone-btn:hover {
+            background: rgba(212,160,23,0.2);
+            border-color: var(--gold);
+            transform: scale(1.05);
+        }
+        .tone-btn .tone-mark { font-size: 1rem; line-height: 1; }
+        .tone-btn .tone-label { font-size: 0.55rem; color: rgba(255,255,255,0.35); letter-spacing: 0.04em; }
+
+        /* --- SKIP BUTTON --- */
+        .btn-skip {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            color: rgba(255,255,255,0.3);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem;
+            padding: 6px 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.06em;
+        }
+        .btn-skip:hover { color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.25); }
+
+        /* --- PROGRESS BAR --- */
+        .progress-track {
+            background: rgba(255,255,255,0.08);
+            border-radius: 100px;
+            height: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 100px;
+            background: linear-gradient(90deg, var(--red), var(--gold));
+            transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* --- BADGE PILL --- */
+        .badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 100px;
+            padding: 5px 14px;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        /* --- TIMER --- */
+        #timer-arc {
+            transition: stroke-dashoffset 1s linear;
+        }
+        .timer-danger #timer-text-display {
+            color: var(--red-bright);
+            animation: pulse-danger 0.5s infinite;
+        }
+        @keyframes pulse-danger { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+        /* --- WRITING CANVAS --- */
+        #writing-canvas-container {
+            background:
+                linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+            background-size: 50px 50px;
+            background-color: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+        }
+
+        /* --- FLASH CARD FLIP --- */
+        .flip-card { perspective: 1000px; cursor: pointer; }
+        .flip-inner {
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .flip-card.flipped .flip-inner { transform: rotateY(180deg); }
+        .flip-front, .flip-back {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: 20px;
+        }
+        .flip-back { transform: rotateY(180deg); position: absolute; inset: 0; }
+
+        /* --- ANIMATIONS --- */
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shake {
+            10%,90%{transform:translateX(-2px)}
+            20%,80%{transform:translateX(4px)}
+            30%,50%,70%{transform:translateX(-6px)}
+            40%,60%{transform:translateX(6px)}
+        }
+        @keyframes popIn {
+            from { opacity:0; transform:scale(0.7); }
+            to { opacity:1; transform:scale(1); }
+        }
+        @keyframes float {
+            0%,100%{ transform:translateY(0); }
+            50%{ transform:translateY(-8px); }
+        }
+        @keyframes shimmer {
+            0%{ background-position:-200% center; }
+            100%{ background-position:200% center; }
+        }
+
+        .anim-up { animation: fadeSlideUp 0.45s cubic-bezier(0.34,1.56,0.64,1) both; }
+        .anim-shake { animation: shake 0.4s both; }
+        .anim-pop { animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both; }
+        .anim-float { animation: float 3s ease-in-out infinite; }
+
+        /* --- SHIMMER TEXT --- */
+        .shimmer-text {
+            background: linear-gradient(90deg, var(--gold) 0%, #fff 40%, var(--gold) 80%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 4s linear infinite;
+        }
+
+        /* --- MIC BUTTON --- */
+        .mic-active {
+            background: rgba(192,57,43,0.3) !important;
+            border-color: var(--red-bright) !important;
+            color: var(--red-bright) !important;
+            animation: pulse-danger 1s infinite;
+        }
+
+        /* --- FLASHCARD SWIPE AREA --- */
+        .swipe-hint {
+            color: rgba(255,255,255,0.25);
+            font-size: 0.7rem;
+            letter-spacing: 0.08em;
+        }
+
+        /* --- RESULT RING --- */
+        .result-ring {
+            position: relative;
+            display: inline-block;
+        }
+        .result-ring svg { transform: rotate(-90deg); }
+        .result-score-text {
+            position: absolute; inset: 0;
+            display: flex; flex-direction:column;
+            align-items: center; justify-content: center;
+        }
+
+        /* --- SCROLLBAR HIDE --- */
+        ::-webkit-scrollbar { display: none; }
+
+        /* --- MODE CARDS --- */
+        .mode-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 32px 24px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+            text-align: center;
+        }
+        .mode-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255,255,255,0.25);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+        }
+        .mode-card.red:hover { border-color: rgba(192,57,43,0.5); background: rgba(192,57,43,0.08); }
+        .mode-card.gold:hover { border-color: rgba(212,160,23,0.5); background: rgba(212,160,23,0.06); }
+        .mode-card.jade:hover { border-color: rgba(39,174,96,0.5); background: rgba(39,174,96,0.06); }
+
+        /* --- ICON BG --- */
+        .icon-bg-red { background: rgba(192,57,43,0.15); color: var(--red-bright); border: 1px solid rgba(192,57,43,0.25); }
+        .icon-bg-gold { background: rgba(212,160,23,0.15); color: var(--gold-light); border: 1px solid rgba(212,160,23,0.25); }
+        .icon-bg-jade { background: rgba(39,174,96,0.15); color: var(--jade-bright); border: 1px solid rgba(39,174,96,0.25); }
+
+        /* --- MULTIPLE CHOICE --- */
+        .mc-option {
+            background: rgba(255,255,255,0.04);
+            border: 1.5px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            padding: 14px 18px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            text-align: left;
+            width: 100%;
+        }
+        .mc-option:hover:not(:disabled) {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.25);
+            transform: translateX(4px);
+        }
+        .mc-option.correct { background: rgba(39,174,96,0.15); border-color: var(--jade-bright); animation: popIn 0.3s ease; }
+        .mc-option.wrong { background: rgba(192,57,43,0.15); border-color: var(--red-bright); animation: shake 0.4s both; }
+        .mc-option.reveal { background: rgba(39,174,96,0.08); border-color: rgba(39,174,96,0.4); }
+        .mc-option:disabled { cursor: default; }
+        .mc-letter {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.4);
+            flex-shrink: 0; transition: all 0.2s;
+        }
+        .mc-option.correct .mc-letter { background: var(--jade); border-color: var(--jade); color: white; }
+        .mc-option.wrong .mc-letter { background: var(--red); border-color: var(--red); color: white; }
+        .mc-option.reveal .mc-letter { background: rgba(39,174,96,0.3); border-color: var(--jade-bright); color: var(--jade-bright); }
+
+        /* --- VOCAB BROWSER --- */
+        .vocab-search {
+            background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.15);
+            border-radius: 14px; color: #e8e4dc; font-family: 'DM Mono', monospace;
+            font-size: 0.9rem; padding: 12px 18px 12px 44px; outline: none;
+            transition: all 0.25s; width: 100%;
+        }
+        .vocab-search::placeholder { color: rgba(255,255,255,0.25); }
+        .vocab-search:focus { border-color: var(--gold); background: rgba(255,255,255,0.09); box-shadow: 0 0 0 3px rgba(212,160,23,0.12); }
+        .vocab-row {
+            display: flex; align-items: center; gap: 14px;
+            padding: 12px 16px; border-radius: 12px; border: 1px solid transparent;
+            cursor: pointer; transition: all 0.18s;
+        }
+        .vocab-row:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); }
+        .vocab-char-cell { font-family: 'Noto Sans SC', sans-serif; font-size: 1.8rem; font-weight: 700; color: white; width: 48px; text-align: center; flex-shrink: 0; }
+        .vocab-detail { flex: 1; min-width: 0; }
+        .vocab-pinyin { font-size: 0.82rem; color: var(--gold-light); letter-spacing: 0.03em; }
+        .vocab-mean { font-size: 0.75rem; color: rgba(255,255,255,0.45); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .vocab-audio-btn {
+            background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+            color: rgba(255,255,255,0.3); width: 34px; height: 34px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.18s; flex-shrink: 0; font-size: 0.8rem;
+        }
+        .vocab-audio-btn:hover { color: var(--gold); border-color: rgba(212,160,23,0.4); }
+        .filter-tab {
+            padding: 7px 16px; border-radius: 100px; font-size: 0.75rem; cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.1); background: transparent; color: rgba(255,255,255,0.4);
+            font-family: 'DM Mono', monospace; transition: all 0.2s; letter-spacing: 0.05em;
+        }
+        .filter-tab.active { background: rgba(212,160,23,0.15); border-color: rgba(212,160,23,0.4); color: var(--gold-light); }
+        #vocab-list { max-height: calc(100vh - 270px); overflow-y: auto; }
+
+        /* responsive */
+        @media (min-width: 640px) { .screen { padding: 32px 24px; } }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center text-slate-800 bg-gradient-to-br from-blue-50 to-indigo-100">
+<body>
+<div class="glow-bg"></div>
 
-    <div id="screen-home" class="w-full max-w-5xl p-6 fade-in text-center">
-        <h1 class="text-5xl font-bold mb-2 tracking-tight">Mandarin <span class="text-indigo-600">Master</span></h1>
-        <p class="text-slate-500 text-lg mb-10">Select your proficiency level</p>
+<!-- ================================================ HOME ================================================ -->
+<div id="screen-home" class="screen active" style="justify-content:center;">
+    <div class="w-full max-w-2xl anim-up">
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 px-4">
-            <button onclick="selectLevel(1)" class="btn-card glass-panel p-8 rounded-3xl shadow-lg border-t-4 border-emerald-400 transition group text-left relative overflow-hidden">
-                <div class="text-emerald-500 text-4xl mb-4 bg-emerald-50 w-16 h-16 rounded-2xl flex items-center justify-center"><i class="fas fa-leaf"></i></div>
-                <h2 class="text-2xl font-bold">HSK Level 1</h2>
-                <p class="text-gray-400 text-sm mt-1">Basic (150 Words)</p>
+        <!-- Logo / Title -->
+        <div class="text-center mb-12">
+            <div class="zh text-6xl font-black text-white mb-3 anim-float" style="letter-spacing:-2px; text-shadow:0 0 60px rgba(212,160,23,0.4)">汉字</div>
+            <div class="serif text-3xl shimmer-text mb-2">HanziPath</div>
+            <p style="color:var(--muted); font-size:0.8rem; letter-spacing:0.15em;">HSK MASTERY · LEVELS 1–3</p>
+
+            <!-- Streak & stats -->
+            <div class="flex items-center justify-center gap-4 mt-6" id="home-stats">
+                <div class="badge"><span style="color:var(--gold)">🔥</span> <span id="streak-display">0</span> day streak</div>
+                <div class="badge"><span style="color:#8ecae6">📚</span> <span id="words-learned-display">0</span> mastered</div>
+            </div>
+        </div>
+
+        <!-- Level cards -->
+        <div class="grid grid-cols-1 gap-4 mb-6" style="gap:14px;">
+            <button onclick="selectLevel(1)" class="level-card" style="--accent-grad: linear-gradient(135deg,rgba(39,174,96,0.08),transparent);">
+                <div class="accent-bar" style="background:linear-gradient(90deg,var(--jade),transparent)"></div>
+                <div class="flex items-center gap-4">
+                    <div class="icon-bg-jade w-14 h-14 rounded-2xl flex items-center justify-center text-xl flex-shrink-0">
+                        <span class="zh">一</span>
+                    </div>
+                    <div class="text-left flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span style="font-size:1rem; font-weight:600; color:white;">HSK Level 1</span>
+                            <span class="badge" style="font-size:0.65rem; background:rgba(39,174,96,0.15); border-color:rgba(39,174,96,0.3); color:var(--jade-bright);">BEGINNER</span>
+                        </div>
+                        <p style="color:var(--muted); font-size:0.78rem;">150 essential characters · greetings, numbers, daily life</p>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color:rgba(255,255,255,0.2);"></i>
+                </div>
             </button>
 
-            <button onclick="selectLevel(2)" class="btn-card glass-panel p-8 rounded-3xl shadow-lg border-t-4 border-blue-400 transition group text-left relative overflow-hidden">
-                <div class="text-blue-500 text-4xl mb-4 bg-blue-50 w-16 h-16 rounded-2xl flex items-center justify-center"><i class="fas fa-book-open"></i></div>
-                <h2 class="text-2xl font-bold">HSK Level 2</h2>
-                <p class="text-gray-400 text-sm mt-1">Intermediate (300 Words)</p>
+            <button onclick="selectLevel(2)" class="level-card" style="--accent-grad: linear-gradient(135deg,rgba(141,182,230,0.08),transparent);">
+                <div class="accent-bar" style="background:linear-gradient(90deg,#4e9af1,transparent)"></div>
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-xl flex-shrink-0" style="background:rgba(78,154,241,0.15); color:#8ecae6; border:1px solid rgba(78,154,241,0.25);">
+                        <span class="zh">二</span>
+                    </div>
+                    <div class="text-left flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span style="font-size:1rem; font-weight:600; color:white;">HSK Level 2</span>
+                            <span class="badge" style="font-size:0.65rem; background:rgba(78,154,241,0.15); border-color:rgba(78,154,241,0.3); color:#8ecae6;">ELEMENTARY</span>
+                        </div>
+                        <p style="color:var(--muted); font-size:0.78rem;">300 words · basic conversations, verbs, adjectives</p>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color:rgba(255,255,255,0.2);"></i>
+                </div>
             </button>
 
-            <button onclick="selectLevel(3)" class="btn-card glass-panel p-8 rounded-3xl shadow-lg border-t-4 border-orange-400 transition group text-left relative overflow-hidden">
-                <div class="text-orange-500 text-4xl mb-4 bg-orange-50 w-16 h-16 rounded-2xl flex items-center justify-center"><i class="fas fa-graduation-cap"></i></div>
-                <h2 class="text-2xl font-bold">HSK Level 3</h2>
-                <p class="text-gray-400 text-sm mt-1">Advanced (600 Words)</p>
+            <button onclick="selectLevel(3)" class="level-card" style="--accent-grad: linear-gradient(135deg,rgba(212,160,23,0.08),transparent);">
+                <div class="accent-bar" style="background:linear-gradient(90deg,var(--gold),transparent)"></div>
+                <div class="flex items-center gap-4">
+                    <div class="icon-bg-gold w-14 h-14 rounded-2xl flex items-center justify-center text-xl flex-shrink-0">
+                        <span class="zh">三</span>
+                    </div>
+                    <div class="text-left flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span style="font-size:1rem; font-weight:600; color:white;">HSK Level 3</span>
+                            <span class="badge" style="font-size:0.65rem; background:rgba(212,160,23,0.15); border-color:rgba(212,160,23,0.3); color:var(--gold-light);">INTERMEDIATE</span>
+                        </div>
+                        <p style="color:var(--muted); font-size:0.78rem;">600 words · complex topics, nuance, fluency</p>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color:rgba(255,255,255,0.2);"></i>
+                </div>
             </button>
         </div>
-        <p id="db-status" class="mt-8 text-gray-400 text-xs font-mono">Loading system...</p>
-    </div>
 
-    <div id="screen-mode" class="hidden w-full max-w-4xl p-6 slide-up text-center">
-        <button onclick="goHome()" class="mb-8 text-slate-400 hover:text-slate-600 flex items-center justify-center gap-2 mx-auto"><i class="fas fa-arrow-left"></i> Change Level</button>
-        
-        <h2 class="text-3xl font-bold mb-8">Choose Training Mode</h2>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 px-8">
-            <button onclick="startMode('quiz')" class="btn-card bg-white p-8 rounded-3xl shadow-xl hover:shadow-2xl transition border-2 border-transparent hover:border-indigo-500 group">
-                <div class="bg-indigo-100 text-indigo-600 w-20 h-20 rounded-full flex items-center justify-center text-3xl mx-auto mb-6 group-hover:scale-110 transition">
+        <p id="db-status" class="text-center" style="color:var(--muted); font-size:0.7rem; letter-spacing:0.1em;">Checking database...</p>
+    </div>
+</div>
+
+<!-- ================================================ MODE SELECT ================================================ -->
+<div id="screen-mode" class="screen" style="justify-content:center;">
+    <div class="w-full max-w-2xl anim-up">
+        <button onclick="goHome()" class="btn-secondary mb-8 flex items-center gap-2" style="font-size:0.78rem;">
+            <i class="fas fa-arrow-left"></i> Change Level
+        </button>
+
+        <div class="text-center mb-10">
+            <div id="mode-level-badge" class="badge mb-4" style="justify-content:center;"></div>
+            <h2 class="serif text-3xl text-white mb-2">Choose your mode</h2>
+            <p style="color:var(--muted); font-size:0.8rem;">Quiz uses all words · Flashcards & Writing use 10 random words</p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4" style="gap:14px;">
+            <button onclick="startMode('flash')" class="mode-card gold">
+                <div class="icon-bg-gold w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-5">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                <h3 style="font-size:1.1rem; font-weight:600; color:white; margin-bottom:6px;">Flashcards</h3>
+                <p style="color:var(--muted); font-size:0.78rem;">Flip cards to reveal meaning · self-pace review</p>
+            </button>
+
+            <button onclick="startMode('mc')" class="mode-card" style="border-color:rgba(155,89,182,0.2);" onmouseenter="this.style.borderColor='rgba(155,89,182,0.5)';this.style.background='rgba(155,89,182,0.07)'" onmouseleave="this.style.borderColor='rgba(155,89,182,0.2)';this.style.background=''">
+                <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-5" style="background:rgba(155,89,182,0.15); color:#c39bd3; border:1px solid rgba(155,89,182,0.3);">
+                    <i class="fas fa-list-ul"></i>
+                </div>
+                <h3 style="font-size:1.1rem; font-weight:600; color:white; margin-bottom:6px;">Multiple Choice</h3>
+                <p style="color:var(--muted); font-size:0.78rem;">Pick the correct meaning · 4 options · great for beginners</p>
+            </button>
+
+            <button onclick="startMode('quiz')" class="mode-card red">
+                <div class="icon-bg-red w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-5">
                     <i class="fas fa-stopwatch"></i>
                 </div>
-                <h3 class="text-2xl font-bold text-slate-800">Speed Quiz</h3>
-                <p class="text-slate-500 mt-2">Guess pinyin, microphone enabled, time attack.</p>
+                <h3 style="font-size:1.1rem; font-weight:600; color:white; margin-bottom:6px;">Speed Quiz</h3>
+                <p style="color:var(--muted); font-size:0.78rem;">Type pinyin under 15s · all vocab · mic input · skip button</p>
             </button>
 
-            <button onclick="startMode('writing')" class="btn-card bg-white p-8 rounded-3xl shadow-xl hover:shadow-2xl transition border-2 border-transparent hover:border-emerald-500 group">
-                <div class="bg-emerald-100 text-emerald-600 w-20 h-20 rounded-full flex items-center justify-center text-3xl mx-auto mb-6 group-hover:scale-110 transition">
-                    <i class="fas fa-pen-fancy"></i>
+            <button onclick="startMode('writing')" class="mode-card jade">
+                <div class="icon-bg-jade w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-5">
+                    <i class="fas fa-pen-nib"></i>
                 </div>
-                <h3 class="text-2xl font-bold text-slate-800">Stroke Writer</h3>
-                <p class="text-slate-500 mt-2">Practice writing Hanzi with correct stroke order.</p>
+                <h3 style="font-size:1.1rem; font-weight:600; color:white; margin-bottom:6px;">Stroke Writer</h3>
+                <p style="color:var(--muted); font-size:0.78rem;">Trace Hanzi with correct stroke order</p>
+            </button>
+        </div>
+
+        <!-- Vocab Browser link -->
+        <div class="text-center mt-6">
+            <button onclick="openVocabBrowser()" class="btn-secondary flex items-center gap-2 mx-auto" style="font-size:0.78rem;">
+                <i class="fas fa-book" style="color:var(--gold);"></i> Browse All Vocabulary
             </button>
         </div>
     </div>
+</div>
 
-    <div id="screen-game-quiz" class="hidden w-full max-w-lg fade-in px-4">
-        <div class="flex justify-between items-center mb-4">
-            <button onclick="goModeSelect()" class="text-slate-400 hover:text-slate-600 text-sm font-bold"><i class="fas fa-times mr-1"></i> Quit</button>
-            <div class="flex items-center gap-3">
-                <div class="bg-white px-3 py-1 rounded-lg text-sm font-bold shadow-sm border"><span id="quiz-current">1</span>/<span id="quiz-total">10</span></div>
-                <div class="bg-indigo-600 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
-                    <i class="fas fa-clock"></i> <span id="timer-text">15</span>s
+<!-- ================================================ FLASHCARD ================================================ -->
+<div id="screen-game-flash" class="screen" style="justify-content:space-between;">
+    <div class="w-full max-w-md">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+            <button onclick="goModeSelect()" class="btn-secondary" style="padding:8px 16px; font-size:0.75rem;">
+                <i class="fas fa-times mr-1"></i> Quit
+            </button>
+            <div class="badge" id="flash-counter">1 / 10</div>
+            <button onclick="playAudio(currentWord.char)" class="btn-secondary" style="padding:8px 14px;">
+                <i class="fas fa-volume-up" style="color:var(--gold)"></i>
+            </button>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-track mb-8">
+            <div class="progress-fill" id="flash-progress" style="width:10%"></div>
+        </div>
+
+        <!-- Flip Card -->
+        <div class="flip-card w-full mb-6" onclick="flipCard()" id="flashcard-wrapper">
+            <div class="flip-inner" id="flashcard-inner" style="height:300px;">
+                <!-- Front -->
+                <div class="flip-front card card-glow w-full h-full flex flex-col items-center justify-center">
+                    <p class="swipe-hint mb-6" style="letter-spacing:0.12em;">TAP TO REVEAL</p>
+                    <div class="zh font-black text-white" id="flash-char" style="font-size:clamp(80px,20vw,120px); line-height:1; text-shadow:0 0 80px rgba(212,160,23,0.3);"></div>
+                    <div class="mt-4 badge" id="flash-level-tag"></div>
+                </div>
+                <!-- Back -->
+                <div class="flip-back card w-full h-full flex flex-col items-center justify-center gap-3" style="background:rgba(212,160,23,0.06); border-color:rgba(212,160,23,0.25);">
+                    <div class="zh font-black" id="flash-char-back" style="font-size:clamp(40px,12vw,64px); color:rgba(255,255,255,0.5);"></div>
+                    <div style="font-size:1.8rem; font-weight:600; color:var(--gold-light); letter-spacing:0.05em;" id="flash-pinyin"></div>
+                    <div style="font-size:1rem; color:rgba(255,255,255,0.7);" id="flash-mean"></div>
+                    <button onclick="event.stopPropagation(); playAudio(currentWord.char);" class="mt-2 badge" style="background:rgba(212,160,23,0.15); border-color:rgba(212,160,23,0.3); cursor:pointer; color:var(--gold-light);">
+                        <i class="fas fa-volume-up"></i> Listen
+                    </button>
                 </div>
             </div>
         </div>
 
-        <div id="card-quiz" class="glass-panel rounded-[2rem] shadow-2xl p-8 text-center relative overflow-hidden bg-white">
-            <div class="mb-8 cursor-pointer" onclick="playAudio(currentWord.char)">
-                <h1 id="quiz-char" class="zh-text text-8xl font-bold text-slate-800 hover:scale-105 transition"></h1>
-                <p class="text-slate-400 text-xs mt-2 font-bold uppercase tracking-widest">Tap to Listen</p>
-            </div>
-
-            <div id="quiz-feedback" class="h-12 mb-2 flex items-center justify-center text-sm font-bold"></div>
-
-            <div class="flex gap-2 w-full mb-4">
-                <input type="text" id="quiz-input" class="w-full bg-slate-100 border-2 border-slate-200 rounded-xl py-3 px-4 text-center text-xl font-bold outline-none focus:bg-white focus:border-indigo-500 transition" placeholder="Pinyin..." autocomplete="off">
-                <button id="mic-btn" onclick="toggleSpeech()" class="w-14 bg-white border-2 border-slate-200 rounded-xl text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition text-lg"><i class="fas fa-microphone"></i></button>
-            </div>
-
-            <div class="flex justify-center gap-2 mb-6">
-                <button onclick="addTone('1')" class="tone-btn w-10 h-10 bg-slate-50 rounded-lg hover:bg-slate-100 border border-slate-200">ˉ</button>
-                <button onclick="addTone('2')" class="tone-btn w-10 h-10 bg-slate-50 rounded-lg hover:bg-slate-100 border border-slate-200">ˊ</button>
-                <button onclick="addTone('3')" class="tone-btn w-10 h-10 bg-slate-50 rounded-lg hover:bg-slate-100 border border-slate-200">ˇ</button>
-                <button onclick="addTone('4')" class="tone-btn w-10 h-10 bg-slate-50 rounded-lg hover:bg-slate-100 border border-slate-200">ˋ</button>
-            </div>
-
-            <button onclick="checkQuizAnswer()" id="btn-quiz-check" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-indigo-700 transition">CHECK</button>
-            <button onclick="nextQuizWord()" id="btn-quiz-next" class="hidden w-full bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-emerald-600 transition">NEXT <i class="fas fa-arrow-right ml-2"></i></button>
+        <!-- Self-assess buttons (shown after flip) -->
+        <div id="flash-assess" class="hidden flex gap-3">
+            <button onclick="flashResult(false)" class="btn-secondary flex-1" style="border-color:rgba(192,57,43,0.4); color:#ff8080;">
+                <i class="fas fa-times mr-2"></i> Missed
+            </button>
+            <button onclick="flashResult(true)" class="btn-jade flex-1">
+                <i class="fas fa-check mr-2"></i> Got it!
+            </button>
         </div>
+        <div id="flash-tap-hint" class="text-center swipe-hint mt-4">← tap card to flip →</div>
     </div>
+</div>
 
-    <div id="screen-game-writing" class="hidden w-full max-w-lg fade-in px-4">
-        <div class="flex justify-between items-center mb-6">
-            <button onclick="goModeSelect()" class="text-slate-400 hover:text-slate-600 text-sm font-bold"><i class="fas fa-times mr-1"></i> Quit</button>
-            <div class="bg-white px-3 py-1 rounded-lg text-sm font-bold shadow-sm border"><span id="write-current">1</span>/<span id="write-total">10</span></div>
+<!-- ================================================ MULTIPLE CHOICE ================================================ -->
+<div id="screen-game-mc" class="screen" style="justify-content:flex-start;">
+    <div class="w-full max-w-md">
+        <div class="flex items-center justify-between mb-4">
+            <button onclick="goModeSelect()" class="btn-secondary" style="padding:8px 16px; font-size:0.75rem;">
+                <i class="fas fa-times mr-1"></i> Quit
+            </button>
+            <div class="badge" id="mc-counter">1 / 10</div>
+            <button onclick="playAudio(currentWord.char)" class="btn-secondary" style="padding:8px 14px;">
+                <i class="fas fa-volume-up" style="color:var(--gold)"></i>
+            </button>
         </div>
 
-        <div class="glass-panel rounded-[2rem] shadow-2xl p-6 text-center bg-white">
-            <p class="text-slate-500 text-sm mb-4">Trace the character below:</p>
-            
-            <div class="mb-6">
-                <h2 id="write-pinyin" class="text-2xl font-bold text-indigo-600 mb-1"></h2>
-                <p id="write-mean" class="text-sm text-slate-400"></p>
+        <div class="progress-track mb-6">
+            <div class="progress-fill" id="mc-progress" style="width:10%"></div>
+        </div>
+
+        <div class="card card-glow p-6 text-center mb-4" id="card-mc">
+            <!-- Character display -->
+            <div class="cursor-pointer mb-2" onclick="playAudio(currentWord.char)">
+                <div class="zh font-black text-white" id="mc-char"
+                     style="font-size:clamp(72px,16vw,100px); line-height:1; text-shadow:0 0 60px rgba(212,160,23,0.2); transition:transform 0.2s;"
+                     onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'"></div>
+                <div style="color:rgba(255,255,255,0.2); font-size:0.6rem; letter-spacing:0.15em; margin-top:6px; margin-bottom:4px;">TAP TO LISTEN</div>
+            </div>
+            <!-- Pinyin shown (meaning is what they guess) -->
+            <div id="mc-pinyin" style="font-size:1rem; color:var(--gold-light); letter-spacing:0.05em; margin-bottom:20px;"></div>
+
+            <!-- Feedback -->
+            <div id="mc-feedback" style="min-height:28px; font-size:0.85rem; font-weight:600; margin-bottom:14px; display:flex; align-items:center; justify-content:center;"></div>
+
+            <!-- Options -->
+            <div id="mc-options" class="flex flex-col gap-2"></div>
+        </div>
+
+        <button onclick="nextMCWord()" id="btn-mc-next" class="hidden btn-primary w-full" style="letter-spacing:0.1em;">
+            NEXT <i class="fas fa-arrow-right ml-2"></i>
+        </button>
+    </div>
+</div>
+
+<!-- ================================================ VOCAB BROWSER ================================================ -->
+<div id="screen-vocab" class="screen" style="justify-content:flex-start; padding-bottom:40px;">
+    <div class="w-full max-w-2xl">
+        <div class="flex items-center gap-3 mb-5">
+            <button onclick="closeVocabBrowser()" class="btn-secondary" style="padding:8px 16px; font-size:0.75rem; flex-shrink:0;">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <div>
+                <div class="serif text-xl text-white">Vocabulary</div>
+                <div style="color:var(--muted); font-size:0.7rem;" id="vocab-subtitle">All Levels</div>
+            </div>
+        </div>
+
+        <!-- Search bar -->
+        <div class="relative mb-4">
+            <i class="fas fa-search" style="position:absolute; left:16px; top:50%; transform:translateY(-50%); color:rgba(255,255,255,0.25); font-size:0.85rem; pointer-events:none;"></i>
+            <input type="text" id="vocab-search-input" class="vocab-search" placeholder="Search character, pinyin, or meaning..."
+                oninput="filterVocab()">
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="flex gap-2 mb-4 flex-wrap">
+            <button class="filter-tab active" onclick="setVocabFilter('all', this)">All</button>
+            <button class="filter-tab" onclick="setVocabFilter(1, this)">HSK 1</button>
+            <button class="filter-tab" onclick="setVocabFilter(2, this)">HSK 2</button>
+            <button class="filter-tab" onclick="setVocabFilter(3, this)">HSK 3</button>
+        </div>
+
+        <!-- Count -->
+        <div style="color:rgba(255,255,255,0.25); font-size:0.7rem; letter-spacing:0.08em; margin-bottom:10px;" id="vocab-count"></div>
+
+        <!-- List -->
+        <div id="vocab-list" class="card" style="padding:8px;"></div>
+    </div>
+</div>
+
+<!-- ================================================ QUIZ ================================================ -->
+<div id="screen-game-quiz" class="screen" style="justify-content:flex-start;">
+    <div class="w-full max-w-md">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-4">
+            <button onclick="goModeSelect()" class="btn-secondary" style="padding:8px 16px; font-size:0.75rem;">
+                <i class="fas fa-times mr-1"></i> Quit
+            </button>
+            <div class="badge" id="quiz-counter">1 / 10</div>
+            <!-- Circular timer -->
+            <div id="timer-wrap" class="relative w-12 h-12">
+                <svg width="48" height="48" viewBox="0 0 48 48">
+                    <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+                    <circle id="timer-arc" cx="24" cy="24" r="20" fill="none"
+                        stroke="var(--gold)" stroke-width="3"
+                        stroke-dasharray="125.66" stroke-dashoffset="0"
+                        stroke-linecap="round"
+                        style="transform:rotate(-90deg);transform-origin:center;transition:stroke-dashoffset 1s linear;"/>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <span id="timer-text-display" style="font-size:0.75rem; font-weight:600; color:var(--gold)">15</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-track mb-6">
+            <div class="progress-fill" id="quiz-progress" style="width:10%"></div>
+        </div>
+
+        <!-- Card -->
+        <div id="card-quiz" class="card card-glow p-8 text-center mb-4">
+            <!-- Char -->
+            <div class="cursor-pointer mb-6" onclick="playAudio(currentWord.char)">
+                <div class="zh font-black text-white" id="quiz-char"
+                     style="font-size:clamp(80px,18vw,110px); line-height:1; text-shadow:0 0 60px rgba(212,160,23,0.2); transition:transform 0.2s;"
+                     onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">
+                </div>
+                <p style="color:rgba(255,255,255,0.25); font-size:0.65rem; letter-spacing:0.15em; margin-top:8px;">TAP TO LISTEN</p>
             </div>
 
-            <div id="writing-canvas-container" class="w-[250px] h-[250px] mx-auto bg-white border-2 border-slate-200 rounded-xl mb-6 relative shadow-inner cursor-crosshair touch-none">
-                <div id="target-div"></div>
+            <!-- Feedback -->
+            <div id="quiz-feedback" style="min-height:36px; display:flex; align-items:center; justify-content:center; margin-bottom:12px; font-size:0.9rem; font-weight:500;"></div>
+
+            <!-- Input row -->
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="quiz-input" class="input-field flex-1" placeholder="type pinyin..." autocomplete="off"
+                    onkeydown="if(event.key==='Enter') checkQuizAnswer()"
+                    oninput="updateToneButtonPreviews()">
+                <button id="mic-btn" onclick="toggleSpeech()" class="btn-secondary" style="width:48px; padding:0; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-microphone"></i>
+                </button>
             </div>
-            
-            <div id="write-feedback" class="h-8 text-sm font-bold text-emerald-500 mb-4 opacity-0 transition">Excellent!</div>
+
+            <!-- Tone buttons -->
+            <div style="margin-bottom:6px; color:rgba(255,255,255,0.25); font-size:0.6rem; letter-spacing:0.1em; text-align:center;">TONES — tap after vowel</div>
+            <div class="flex gap-1.5 mb-4">
+                <button onclick="addTone(1)" class="tone-btn">
+                    <span class="tone-mark">ā</span>
+                    <span class="tone-label">1st</span>
+                </button>
+                <button onclick="addTone(2)" class="tone-btn">
+                    <span class="tone-mark">á</span>
+                    <span class="tone-label">2nd</span>
+                </button>
+                <button onclick="addTone(3)" class="tone-btn">
+                    <span class="tone-mark">ǎ</span>
+                    <span class="tone-label">3rd</span>
+                </button>
+                <button onclick="addTone(4)" class="tone-btn">
+                    <span class="tone-mark">à</span>
+                    <span class="tone-label">4th</span>
+                </button>
+                <button onclick="addTone(5)" class="tone-btn">
+                    <span class="tone-mark">a</span>
+                    <span class="tone-label">neutral</span>
+                </button>
+            </div>
 
             <div class="flex gap-2">
-                <button onclick="animateWriter()" class="flex-1 bg-indigo-50 text-indigo-600 font-bold py-3 rounded-xl hover:bg-indigo-100 transition text-sm">
-                    <i class="fas fa-play mr-1"></i> Demo
-                </button>
-                
-                <button id="btn-hint" onclick="toggleHint()" class="flex-1 bg-yellow-50 text-yellow-600 font-bold py-3 rounded-xl hover:bg-yellow-100 transition text-sm">
-                    <i class="fas fa-lightbulb mr-1"></i> Hint
-                </button>
-                
-                <button onclick="resetWriter()" class="flex-1 bg-slate-100 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-200 transition text-sm">
-                    <i class="fas fa-eraser mr-1"></i> Clear
-                </button>
+                <button onclick="checkQuizAnswer()" id="btn-quiz-check" class="btn-gold flex-1" style="letter-spacing:0.1em;">CHECK</button>
+                <button onclick="skipQuizWord()" id="btn-quiz-skip" class="btn-skip">SKIP</button>
             </div>
-            
-            <button onclick="nextWritingWord()" id="btn-write-next" class="hidden w-full mt-4 bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-emerald-600 transition slide-up">CONTINUE</button>
+            <button onclick="nextQuizWord()" id="btn-quiz-next" class="hidden btn-primary w-full mt-2" style="letter-spacing:0.12em;">
+                NEXT <i class="fas fa-arrow-right ml-2"></i>
+            </button>
         </div>
     </div>
+</div>
 
-    <div id="screen-result" class="hidden w-full max-w-md text-center fade-in px-4">
-        <div class="glass-panel rounded-[2.5rem] shadow-2xl p-10 bg-white">
-            <div class="text-7xl mb-6">🎉</div>
-            <h2 class="text-3xl font-bold mb-2 text-slate-800">Session Complete!</h2>
-            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-8 mt-6">
-                <div class="text-5xl font-bold text-indigo-600" id="result-score">100%</div>
-                <div class="text-xs text-slate-400 uppercase font-bold mt-2">Accuracy</div>
+<!-- ================================================ WRITING ================================================ -->
+<div id="screen-game-writing" class="screen" style="justify-content:flex-start;">
+    <div class="w-full max-w-md">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-4">
+            <button onclick="goModeSelect()" class="btn-secondary" style="padding:8px 16px; font-size:0.75rem;">
+                <i class="fas fa-times mr-1"></i> Quit
+            </button>
+            <div class="badge" id="write-counter">1 / 10</div>
+            <button onclick="playAudio(currentWord.char)" class="btn-secondary" style="padding:8px 14px;">
+                <i class="fas fa-volume-up" style="color:var(--gold)"></i>
+            </button>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-track mb-6">
+            <div class="progress-fill" id="write-progress" style="width:10%"></div>
+        </div>
+
+        <div class="card card-glow p-6 text-center">
+            <p style="color:rgba(255,255,255,0.35); font-size:0.7rem; letter-spacing:0.12em; margin-bottom:16px;">TRACE THE CHARACTER</p>
+
+            <div class="mb-4">
+                <div style="font-size:1.5rem; font-weight:700; color:var(--gold-light); letter-spacing:0.08em;" id="write-pinyin"></div>
+                <div style="font-size:0.85rem; color:rgba(255,255,255,0.5); margin-top:4px;" id="write-mean"></div>
             </div>
-            <button onclick="goModeSelect()" class="w-full bg-slate-800 text-white font-bold py-4 rounded-xl hover:bg-slate-900 shadow-lg">Back to Menu</button>
+
+            <!-- Canvas -->
+            <div id="writing-canvas-container" class="w-[260px] h-[260px] mx-auto mb-4 relative cursor-crosshair touch-none">
+                <div id="target-div"></div>
+            </div>
+
+            <!-- Feedback -->
+            <div id="write-feedback" style="min-height:28px; font-size:0.85rem; font-weight:600; color:var(--jade-bright); opacity:0; transition:opacity 0.3s; margin-bottom:14px;"></div>
+
+            <!-- Action buttons -->
+            <div class="flex gap-2">
+                <button onclick="animateWriter()" class="btn-secondary flex-1" style="font-size:0.78rem; padding:10px;">
+                    <i class="fas fa-play mr-1" style="color:#8ecae6;"></i> Demo
+                </button>
+                <button id="btn-hint" onclick="toggleHint()" class="btn-secondary flex-1" style="font-size:0.78rem; padding:10px;">
+                    <i class="fas fa-lightbulb mr-1" style="color:var(--gold);"></i> Hint
+                </button>
+                <button onclick="resetWriter()" class="btn-secondary flex-1" style="font-size:0.78rem; padding:10px;">
+                    <i class="fas fa-eraser mr-1" style="color:var(--red-bright);"></i> Reset
+                </button>
+            </div>
+
+            <button onclick="nextWritingWord()" id="btn-write-next" class="hidden btn-jade w-full mt-4" style="letter-spacing:0.1em;">
+                CONTINUE <i class="fas fa-arrow-right ml-2"></i>
+            </button>
         </div>
     </div>
+</div>
 
-    <script src="database.js"></script>
-    <script>
-        // --- GLOBAL STATE ---
-        let selectedLevel = 1;
-        let sessionWords = [];
-        let currentIndex = 0;
-        let currentWord = {};
-        
-        // Screens
-        const screens = {
-            home: document.getElementById('screen-home'),
-            mode: document.getElementById('screen-mode'),
-            quiz: document.getElementById('screen-game-quiz'),
-            writing: document.getElementById('screen-game-writing'),
-            result: document.getElementById('screen-result')
-        };
+<!-- ================================================ RESULT ================================================ -->
+<div id="screen-result" class="screen" style="justify-content:center;">
+    <div class="w-full max-w-sm text-center anim-up">
+        <div class="card card-glow p-10">
+            <!-- Big emoji / icon -->
+            <div id="result-emoji" style="font-size:3.5rem; margin-bottom:20px; animation:popIn 0.5s 0.2s both;">🎉</div>
+            <div class="serif text-2xl text-white mb-2">Session Complete</div>
+            <p id="result-subtitle" style="color:var(--muted); font-size:0.78rem; margin-bottom:28px;"></p>
 
-        // --- NAVIGATION ---
-        function switchScreen(id) {
-            Object.values(screens).forEach(el => el.classList.add('hidden'));
-            screens[id].classList.remove('hidden');
+            <!-- Score ring -->
+            <div class="result-ring mb-6 mx-auto" style="width:140px; height:140px;">
+                <svg width="140" height="140" viewBox="0 0 140 140">
+                    <circle cx="70" cy="70" r="60" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8"/>
+                    <circle id="score-ring-fill" cx="70" cy="70" r="60" fill="none"
+                        stroke="var(--gold)" stroke-width="8"
+                        stroke-dasharray="376.99" stroke-dashoffset="376.99"
+                        stroke-linecap="round"
+                        style="transform:rotate(-90deg);transform-origin:center; transition:stroke-dashoffset 1.2s cubic-bezier(0.34,1.56,0.64,1) 0.3s;"/>
+                </svg>
+                <div class="result-score-text">
+                    <div class="shimmer-text serif" style="font-size:2.5rem; -webkit-text-fill-color:unset; color:var(--gold-light);" id="result-score">--</div>
+                    <div style="color:rgba(255,255,255,0.4); font-size:0.6rem; letter-spacing:0.12em; margin-top:-2px;">ACCURACY</div>
+                </div>
+            </div>
+
+            <!-- Stats row -->
+            <div class="flex gap-3 mb-8">
+                <div class="card flex-1 p-4">
+                    <div style="font-size:1.4rem; font-weight:700; color:var(--jade-bright);" id="result-correct">0</div>
+                    <div style="font-size:0.65rem; color:var(--muted); letter-spacing:0.08em; margin-top:2px;">CORRECT</div>
+                </div>
+                <div class="card flex-1 p-4">
+                    <div style="font-size:1.4rem; font-weight:700; color:var(--red-bright);" id="result-wrong">0</div>
+                    <div style="font-size:0.65rem; color:var(--muted); letter-spacing:0.08em; margin-top:2px;">MISSED</div>
+                </div>
+                <div class="card flex-1 p-4">
+                    <div style="font-size:1.4rem; font-weight:700; color:var(--gold-light);" id="result-total">0</div>
+                    <div style="font-size:0.65rem; color:var(--muted); letter-spacing:0.08em; margin-top:2px;">TOTAL</div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <button onclick="replaySession()" class="btn-gold w-full" style="letter-spacing:0.1em;">
+                    <i class="fas fa-redo mr-2"></i> PLAY AGAIN
+                </button>
+                <button onclick="goModeSelect()" class="btn-secondary w-full">
+                    Back to Modes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="database.js"></script>
+<script>
+// =====================================================================
+// STATE
+// =====================================================================
+let selectedLevel = 1;
+let sessionWords = [];
+let currentIndex = 0;
+let currentWord = {};
+let currentMode = 'flash';
+let sessionScore = 0;
+
+// Screens
+const screens = {
+    home: document.getElementById('screen-home'),
+    mode: document.getElementById('screen-mode'),
+    flash: document.getElementById('screen-game-flash'),
+    mc: document.getElementById('screen-game-mc'),
+    quiz: document.getElementById('screen-game-quiz'),
+    writing: document.getElementById('screen-game-writing'),
+    vocab: document.getElementById('screen-vocab'),
+    result: document.getElementById('screen-result')
+};
+
+// =====================================================================
+// NAVIGATION
+// =====================================================================
+function switchScreen(id) {
+    Object.values(screens).forEach(el => el.classList.remove('active'));
+    screens[id].classList.add('active');
+    window.scrollTo(0, 0);
+}
+
+function goHome() { switchScreen('home'); }
+
+function goModeSelect() {
+    stopTimer();
+    stopSpeech();
+    switchScreen('mode');
+}
+
+function selectLevel(lvl) {
+    if (typeof database === 'undefined') { alert("Missing database.js!"); return; }
+    selectedLevel = lvl;
+    const labels = { 1: 'HSK 1 · Beginner', 2: 'HSK 2 · Elementary', 3: 'HSK 3 · Intermediate' };
+    document.getElementById('mode-level-badge').textContent = labels[lvl];
+    switchScreen('mode');
+}
+
+function startMode(mode) {
+    currentMode = mode;
+    let data = database[selectedLevel] || database[1];
+    // For quiz: use ALL shuffled words. For others: 10 words.
+    if (mode === 'quiz') {
+        sessionWords = [...data].sort(() => 0.5 - Math.random());
+    } else {
+        sessionWords = [...data].sort(() => 0.5 - Math.random()).slice(0, 10);
+    }
+    currentIndex = 0;
+    sessionScore = 0;
+
+    if (mode === 'flash') initFlashMode();
+    else if (mode === 'mc') initMCMode();
+    else if (mode === 'quiz') initQuizMode();
+    else initWritingMode();
+}
+
+function replaySession() {
+    startMode(currentMode);
+}
+
+// =====================================================================
+// FLASH CARDS
+// =====================================================================
+let flashCorrect = 0;
+let cardFlipped = false;
+
+function initFlashMode() {
+    flashCorrect = 0;
+    switchScreen('flash');
+    loadFlashCard();
+}
+
+function loadFlashCard() {
+    cardFlipped = false;
+    currentWord = sessionWords[currentIndex];
+
+    // Reset flip
+    document.getElementById('flashcard-inner').style.transition = 'none';
+    document.getElementById('flashcard-wrapper').classList.remove('flipped');
+    setTimeout(() => {
+        document.getElementById('flashcard-inner').style.transition = '';
+    }, 50);
+
+    document.getElementById('flash-char').textContent = currentWord.char;
+    document.getElementById('flash-char-back').textContent = currentWord.char;
+    document.getElementById('flash-pinyin').textContent = displayPinyin(currentWord.pinyin);
+    document.getElementById('flash-mean').textContent = currentWord.mean;
+    document.getElementById('flash-level-tag').textContent = `HSK ${selectedLevel}`;
+
+    document.getElementById('flash-assess').classList.add('hidden');
+    document.getElementById('flash-tap-hint').style.display = 'block';
+
+    updateProgress('flash');
+}
+
+function flipCard() {
+    if (cardFlipped) return;
+    cardFlipped = true;
+    document.getElementById('flashcard-wrapper').classList.add('flipped');
+    document.getElementById('flash-assess').classList.remove('hidden');
+    document.getElementById('flash-assess').classList.add('flex');
+    document.getElementById('flash-tap-hint').style.display = 'none';
+    playAudio(currentWord.char);
+}
+
+function flashResult(correct) {
+    if (correct) flashCorrect++;
+    if (currentIndex < sessionWords.length - 1) {
+        currentIndex++;
+        loadFlashCard();
+    } else {
+        finishSession(flashCorrect);
+    }
+}
+
+// =====================================================================
+// QUIZ MODE
+// =====================================================================
+let quizCorrect = 0;
+let timerInterval;
+let timeLeft = 15;
+const TIMER_CIRC = 125.66;
+
+function initQuizMode() {
+    quizCorrect = 0;
+    initSpeech();
+    switchScreen('quiz');
+    loadQuizCard();
+}
+
+function loadQuizCard() {
+    currentWord = sessionWords[currentIndex];
+    const elChar = document.getElementById('quiz-char');
+    const elInput = document.getElementById('quiz-input');
+    const elFeedback = document.getElementById('quiz-feedback');
+
+    elChar.textContent = currentWord.char;
+    elInput.value = '';
+    elInput.disabled = false;
+    elInput.className = 'input-field flex-1';
+    elFeedback.innerHTML = '';
+    document.getElementById('btn-quiz-check').classList.remove('hidden');
+    document.getElementById('btn-quiz-skip').classList.remove('hidden');
+    document.getElementById('btn-quiz-next').classList.add('hidden');
+    document.getElementById('card-quiz').classList.remove('anim-shake');
+
+    updateProgress('quiz');
+    elInput.focus();
+    startTimer();
+}
+
+function updateProgress(mode) {
+    const pct = ((currentIndex + 1) / sessionWords.length) * 100;
+    const pfx = { flash: 'flash', mc: 'mc', quiz: 'quiz', writing: 'write' };
+    const key = pfx[mode];
+    document.getElementById(`${key}-progress`).style.width = pct + '%';
+    if (mode === 'flash') document.getElementById('flash-counter').textContent = `${currentIndex+1} / ${sessionWords.length}`;
+    else if (mode === 'mc') document.getElementById('mc-counter').textContent = `${currentIndex+1} / ${sessionWords.length}`;
+    else if (mode === 'quiz') document.getElementById('quiz-counter').textContent = `${currentIndex+1} / ${sessionWords.length}`;
+    else if (mode === 'writing') document.getElementById('write-counter').textContent = `${currentIndex+1} / ${sessionWords.length}`;
+}
+
+function startTimer() {
+    clearInterval(timerInterval);
+    timeLeft = 15;
+    updateTimerDisplay();
+    const arc = document.getElementById('timer-arc');
+    arc.style.stroke = 'var(--gold)';
+    document.getElementById('timer-wrap').classList.remove('timer-danger');
+
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay();
+        if (timeLeft <= 5) {
+            document.getElementById('timer-wrap').classList.add('timer-danger');
+            arc.style.stroke = 'var(--red-bright)';
         }
-
-        function selectLevel(lvl) {
-            if(typeof database === 'undefined') { alert("Missing database.js!"); return; }
-            selectedLevel = lvl;
-            switchScreen('mode');
-        }
-
-        function goHome() { switchScreen('home'); }
-        function goModeSelect() { 
-            stopTimer(); 
-            stopSpeech();
-            switchScreen('mode'); 
-        }
-
-        function startMode(mode) {
-            // Load Data & Shuffle
-            let data = database[selectedLevel] || database[1];
-            sessionWords = [...data].sort(() => 0.5 - Math.random()); // Shuffle
-            currentIndex = 0;
-            
-            if (mode === 'quiz') initQuizMode();
-            else initWritingMode();
-        }
-
-        // ==========================================
-        // MODE 1: SPEED QUIZ LOGIC
-        // ==========================================
-        let quizCorrect = 0;
-        let timerInterval;
-        let timeLeft = 15;
-        let recognition;
-        let isListening = false;
-
-        function initQuizMode() {
-            quizCorrect = 0;
-            initSpeech();
-            switchScreen('quiz');
-            document.getElementById('quiz-total').innerText = sessionWords.length;
-            loadQuizCard();
-        }
-
-        function loadQuizCard() {
-            currentWord = sessionWords[currentIndex];
-            const elChar = document.getElementById('quiz-char');
-            const elInput = document.getElementById('quiz-input');
-            const elFeedback = document.getElementById('quiz-feedback');
-            
-            document.getElementById('quiz-current').innerText = currentIndex + 1;
-            
-            // Render char text only
-            elChar.innerText = currentWord.char;
-            
-            // Reset UI
-            elInput.value = "";
-            elInput.disabled = false;
-            elInput.focus();
-            elFeedback.innerText = "";
-            document.getElementById('btn-quiz-check').classList.remove('hidden');
-            document.getElementById('btn-quiz-next').classList.add('hidden');
-            document.getElementById('card-quiz').classList.remove('shake');
-
-            startTimer();
-        }
-
-        function startTimer() {
+        if (timeLeft <= 0) {
             clearInterval(timerInterval);
-            timeLeft = 15;
-            const elTimer = document.getElementById('timer-text');
-            elTimer.innerText = timeLeft;
-            elTimer.parentElement.classList.remove('bg-red-500');
-            elTimer.parentElement.classList.add('bg-indigo-600');
-
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                elTimer.innerText = timeLeft;
-                if(timeLeft <= 5) {
-                    elTimer.parentElement.classList.remove('bg-indigo-600');
-                    elTimer.parentElement.classList.add('bg-red-500');
-                }
-                if(timeLeft <= 0) {
-                    clearInterval(timerInterval);
-                    handleQuizResult(false, "Time's Up!");
-                }
-            }, 1000);
+            handleQuizResult(false, `⏰ Time's Up! — ${displayPinyin(currentWord.pinyin)}`);
         }
-        function stopTimer() { clearInterval(timerInterval); }
+    }, 1000);
+}
 
-        function checkQuizAnswer() {
-            stopTimer();
-            stopSpeech();
-            const elInput = document.getElementById('quiz-input');
-            
-            let input = elInput.value.toLowerCase().replace(/\s+/g, '');
-            if(input.includes("heard:")) input = "wrong"; // Anti-cheat speech error
+function updateTimerDisplay() {
+    document.getElementById('timer-text-display').textContent = timeLeft;
+    const arc = document.getElementById('timer-arc');
+    const offset = TIMER_CIRC * (1 - timeLeft / 15);
+    arc.style.strokeDashoffset = offset;
+}
 
-            const cleanPinyin = currentWord.pinyin.toLowerCase().replace(/\s+/g, '');
-            const noToneInput = input.replace(/[0-9]/g, '');
-            const noToneAns = cleanPinyin.replace(/[0-9]/g, '');
+function stopTimer() { clearInterval(timerInterval); }
 
-            if (input === cleanPinyin || noToneInput === noToneAns) {
-                handleQuizResult(true, "Correct!");
-            } else {
-                handleQuizResult(false, `Wrong! It's: ${currentWord.pinyin}`);
+function checkQuizAnswer() {
+    stopTimer();
+    stopSpeech();
+    const raw = document.getElementById('quiz-input').value.trim();
+    if (!raw || raw.includes('[Heard:')) { handleQuizResult(false, `✗ Answer: ${displayPinyin(currentWord.pinyin)} — ${currentWord.mean}`); return; }
+
+    // stripAll: remove diacritics, numbers, spaces → bare consonants+vowels
+    const stripAll = s => s.toLowerCase().split('').map(stripTone).join('').replace(/[0-9\s]/g,'');
+
+    const inputStripped = stripAll(raw);
+    const ansStripped   = stripAll(currentWord.pinyin);
+
+    // Also compare: convert user's diacritic input to pure base and compare with converted answer
+    const isNoTone = (inputStripped === ansStripped);
+
+    // "Exact with tones": user typed diacritics that match the converted answer
+    const ansConverted = displayPinyin(currentWord.pinyin).toLowerCase().replace(/\s+/g,'');
+    const inputClean   = raw.toLowerCase().replace(/\s+/g,'');
+    // Also allow numeric tone input matching raw db  e.g. "sheng1ri4"
+    const rawDbClean   = currentWord.pinyin.toLowerCase().replace(/\s+/g,'');
+
+    const isExact = (inputClean === ansConverted || inputClean === rawDbClean);
+
+    if (isExact) {
+        handleQuizResult(true, `✓ Perfect with tones! — ${currentWord.mean}`);
+    } else if (isNoTone) {
+        handleQuizResult(true, `✓ Correct! (tones optional) — ${currentWord.mean}`, true);
+    } else {
+        handleQuizResult(false, `✗ Answer: ${displayPinyin(currentWord.pinyin)} — ${currentWord.mean}`);
+    }
+}
+
+function skipQuizWord() {
+    stopTimer();
+    stopSpeech();
+    handleQuizResult(false, `⟳ Skipped — ${displayPinyin(currentWord.pinyin)} (${currentWord.mean})`);
+}
+
+function handleQuizResult(isCorrect, msg, isPartial) {
+    const elInput = document.getElementById('quiz-input');
+    elInput.disabled = true;
+    document.getElementById('btn-quiz-check').classList.add('hidden');
+    document.getElementById('btn-quiz-skip').classList.add('hidden');
+    document.getElementById('btn-quiz-next').classList.remove('hidden');
+
+    const fb = document.getElementById('quiz-feedback');
+    if (isCorrect) {
+        quizCorrect++;
+        const color = isPartial ? 'var(--gold-light)' : 'var(--jade-bright)';
+        fb.innerHTML = `<span style="color:${color}">${msg}</span>`;
+        elInput.classList.add('correct');
+        playAudio(currentWord.char);
+    } else {
+        fb.innerHTML = `<span style="color:#ff8080">${msg}</span>`;
+        elInput.classList.add('wrong');
+        document.getElementById('card-quiz').classList.add('anim-shake');
+    }
+}
+
+function nextQuizWord() {
+    if (currentIndex < sessionWords.length - 1) {
+        currentIndex++;
+        loadQuizCard();
+    } else {
+        finishSession(quizCorrect);
+    }
+}
+
+// =====================================================================
+// PINYIN CONVERSION: numeric → diacritic  e.g. "sheng1ri4" → "shēngrì"
+// =====================================================================
+function numericToTone(pinyin) {
+    if (!pinyin) return pinyin;
+    const toneMap = {
+        'a': ['ā','á','ǎ','à','a'],
+        'e': ['ē','é','ě','è','e'],
+        'i': ['ī','í','ǐ','ì','i'],
+        'o': ['ō','ó','ǒ','ò','o'],
+        'u': ['ū','ú','ǔ','ù','u'],
+        'ü': ['ǖ','ǘ','ǚ','ǜ','ü'],
+        'v': ['ǖ','ǘ','ǚ','ǜ','ü'],
+    };
+
+    // Split on syllable boundaries (letter-digit groups)
+    return pinyin.replace(/([a-züv]+)([1-5])/gi, (match, letters, tone) => {
+        const t = parseInt(tone) - 1;
+        const l = letters.toLowerCase();
+
+        // Tone placement rules:
+        // 1. If 'a' or 'e' exists, it takes the tone
+        // 2. If 'ou', tone goes on 'o'
+        // 3. Otherwise tone goes on last vowel
+        let result = l;
+        if (/a/.test(l)) {
+            result = l.replace('a', toneMap['a'][t]);
+        } else if (/e/.test(l)) {
+            result = l.replace('e', toneMap['e'][t]);
+        } else if (l.includes('ou')) {
+            result = l.replace('o', toneMap['o'][t]);
+        } else {
+            // Find last vowel
+            const vowels = ['a','e','i','o','u','ü','v'];
+            let lastIdx = -1, lastVowel = '';
+            for (let i = l.length - 1; i >= 0; i--) {
+                if (vowels.includes(l[i])) { lastIdx = i; lastVowel = l[i]; break; }
+            }
+            if (lastIdx >= 0) {
+                result = l.slice(0, lastIdx) + toneMap[lastVowel][t] + l.slice(lastIdx + 1);
             }
         }
+        return result;
+    }).replace(/5/g, ''); // remove neutral tone numbers
+}
 
-        function handleQuizResult(isCorrect, msg) {
-            const elFeedback = document.getElementById('quiz-feedback');
-            const elInput = document.getElementById('quiz-input');
-            
-            elInput.disabled = true;
-            document.getElementById('btn-quiz-check').classList.add('hidden');
-            document.getElementById('btn-quiz-next').classList.remove('hidden');
-            document.getElementById('btn-quiz-next').focus();
+function displayPinyin(pinyin) {
+    return numericToTone(pinyin);
+}
 
-            if(isCorrect) {
-                quizCorrect++;
-                elFeedback.innerHTML = `<span class="text-emerald-500"><i class="fas fa-check"></i> ${msg} (${currentWord.mean})</span>`;
-                elInput.classList.add('border-emerald-500', 'bg-emerald-50');
-                playAudio(currentWord.char);
-            } else {
-                document.getElementById('card-quiz').classList.add('shake');
-                elFeedback.innerHTML = `<span class="text-red-500"><i class="fas fa-times"></i> ${msg}</span>`;
-                elInput.classList.add('border-red-500', 'bg-red-50');
-            }
+function stripTone(ch) {
+    const map = {
+        'ā':'a','á':'a','ǎ':'a','à':'a',
+        'ē':'e','é':'e','ě':'e','è':'e',
+        'ī':'i','í':'i','ǐ':'i','ì':'i',
+        'ō':'o','ó':'o','ǒ':'o','ò':'o',
+        'ū':'u','ú':'u','ǔ':'u','ù':'u',
+        'ǖ':'ü','ǘ':'ü','ǚ':'ü','ǜ':'ü',
+    };
+    return map[ch.toLowerCase()] || ch.toLowerCase();
+}
+
+function addTone(toneNum) {
+    const inp = document.getElementById('quiz-input');
+    const val = inp.value;
+    const toneMap = {
+        'a': ['ā','á','ǎ','à','a'],
+        'e': ['ē','é','ě','è','e'],
+        'i': ['ī','í','ǐ','ì','i'],
+        'o': ['ō','ó','ǒ','ò','o'],
+        'u': ['ū','ú','ǔ','ù','u'],
+        'ü': ['ǖ','ǘ','ǚ','ǜ','ü'],
+        'v': ['ǖ','ǘ','ǚ','ǜ','ü'],
+    };
+    const idx = toneNum - 1;
+    let replaced = false;
+
+    // Find the last vowel in the current input
+    for (let i = val.length - 1; i >= 0; i--) {
+        const stripped = stripTone(val[i]);
+        if (toneMap[stripped]) {
+            const newChar = toneMap[stripped][idx];
+            inp.value = val.slice(0, i) + newChar + val.slice(i + 1);
+            replaced = true;
+            break;
         }
+    }
+    if (!replaced) {
+        inp.value = val + ['ā','á','ǎ','à','a'][idx];
+    }
+    inp.focus();
+    updateToneButtonPreviews();
+}
 
-        function nextQuizWord() {
-            if(currentIndex < sessionWords.length - 1) {
-                currentIndex++;
-                loadQuizCard();
-            } else {
-                finishSession(quizCorrect);
-            }
+// Update tone button previews to show the actual vowel in the input
+function updateToneButtonPreviews() {
+    const inp = document.getElementById('quiz-input');
+    if (!inp) return;
+    const val = inp.value;
+    const toneMap = {
+        'a': ['ā','á','ǎ','à','a'],
+        'e': ['ē','é','ě','è','e'],
+        'i': ['ī','í','ǐ','ì','i'],
+        'o': ['ō','ó','ǒ','ò','o'],
+        'u': ['ū','ú','ǔ','ù','u'],
+        'ü': ['ǖ','ǘ','ǚ','ǜ','ü'],
+        'v': ['ǖ','ǘ','ǚ','ǜ','ü'],
+    };
+
+    // Find last vowel
+    let baseVowel = 'a';
+    for (let i = val.length - 1; i >= 0; i--) {
+        const s = stripTone(val[i]);
+        if (toneMap[s]) { baseVowel = s === 'v' ? 'ü' : s; break; }
+    }
+
+    const marks = toneMap[baseVowel] || toneMap['a'];
+    const btns = document.querySelectorAll('.tone-btn .tone-mark');
+    btns.forEach((el, i) => { if (marks[i] !== undefined) el.textContent = marks[i]; });
+}
+
+// Speech
+let recognition, isListening = false;
+function initSpeech() {
+    const API = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!API) return;
+    recognition = new API();
+    recognition.lang = 'zh-CN';
+    recognition.continuous = false;
+    recognition.onstart = () => { isListening = true; document.getElementById('mic-btn').classList.add('mic-active'); };
+    recognition.onend = () => { isListening = false; document.getElementById('mic-btn').classList.remove('mic-active'); };
+    recognition.onresult = (e) => {
+        const t = e.results[0][0].transcript.replace(/[^\u4e00-\u9fa5]/g,'');
+        if (t === currentWord.char) {
+            document.getElementById('quiz-input').value = currentWord.pinyin;
+            checkQuizAnswer();
+        } else {
+            document.getElementById('quiz-input').value = `[Heard: ${t}]`;
         }
+    };
+}
+function toggleSpeech() { if (isListening) recognition && recognition.stop(); else recognition && recognition.start(); }
+function stopSpeech() { if (isListening) recognition && recognition.stop(); }
 
-        // Speech Logic
-        function initSpeech() {
-            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-                recognition = new SpeechAPI();
-                recognition.lang = 'zh-CN';
-                recognition.continuous = false;
-                
-                recognition.onstart = () => { isListening = true; document.getElementById('mic-btn').classList.add('mic-active'); };
-                recognition.onend = () => { isListening = false; document.getElementById('mic-btn').classList.remove('mic-active'); };
-                recognition.onresult = (e) => {
-                    const transcript = e.results[0][0].transcript.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
-                    if(transcript === currentWord.char) {
-                        document.getElementById('quiz-input').value = currentWord.pinyin;
-                        checkQuizAnswer();
-                    } else {
-                        document.getElementById('quiz-input').value = `[Heard: ${transcript}]`;
-                    }
-                };
-            }
+// =====================================================================
+// WRITING MODE
+// =====================================================================
+let writer;
+let writeCorrect = 0;
+let isHintVisible = false;
+
+function initWritingMode() {
+    writeCorrect = 0;
+    switchScreen('writing');
+    loadWritingCard();
+}
+
+function loadWritingCard() {
+    currentWord = sessionWords[currentIndex];
+    isHintVisible = false;
+    updateHintBtn();
+    document.getElementById('write-pinyin').textContent = displayPinyin(currentWord.pinyin);
+    document.getElementById('write-mean').textContent = currentWord.mean;
+    document.getElementById('write-feedback').style.opacity = '0';
+    document.getElementById('btn-write-next').classList.add('hidden');
+    document.getElementById('target-div').innerHTML = '';
+
+    updateProgress('writing');
+
+    const char = currentWord.char.charAt(0);
+    writer = HanziWriter.create('target-div', char, {
+        width: 260, height: 260, padding: 12,
+        showOutline: false,
+        strokeColor: '#d4a017',
+        highlightColor: '#2ecc71',
+        outlineColor: 'rgba(255,255,255,0.15)',
+        drawingWidth: 18,
+        showCharacter: false,
+        strokeAnimationSpeed: 1,
+        delayBetweenStrokes: 200
+    });
+
+    writer.quiz({
+        onMistake: () => {},
+        onCorrectStroke: () => {},
+        onComplete: () => handleWritingSuccess()
+    });
+}
+
+function toggleHint() {
+    if (!writer) return;
+    isHintVisible ? writer.hideOutline() : writer.showOutline();
+    isHintVisible = !isHintVisible;
+    updateHintBtn();
+}
+function updateHintBtn() {
+    const btn = document.getElementById('btn-hint');
+    if (isHintVisible) {
+        btn.innerHTML = `<i class="fas fa-eye-slash mr-1" style="color:var(--gold);"></i> Hide`;
+        btn.style.borderColor = 'rgba(212,160,23,0.4)';
+    } else {
+        btn.innerHTML = `<i class="fas fa-lightbulb mr-1" style="color:var(--gold);"></i> Hint`;
+        btn.style.borderColor = '';
+    }
+}
+
+function handleWritingSuccess() {
+    writeCorrect++;
+    const el = document.getElementById('write-feedback');
+    el.textContent = '✓ Perfect! Character complete.';
+    el.style.opacity = '1';
+    playAudio(currentWord.char);
+    document.getElementById('btn-write-next').classList.remove('hidden');
+}
+
+function nextWritingWord() {
+    if (currentIndex < sessionWords.length - 1) {
+        currentIndex++;
+        loadWritingCard();
+    } else {
+        finishSession(writeCorrect);
+    }
+}
+
+function animateWriter() { writer && writer.animateCharacter(); }
+function resetWriter() { loadWritingCard(); }
+
+// =====================================================================
+// RESULT
+// =====================================================================
+function finishSession(scoreCount) {
+    const total = sessionWords.length;
+    const pct = Math.round((scoreCount / total) * 100);
+
+    document.getElementById('result-score').textContent = pct + '%';
+    document.getElementById('result-correct').textContent = scoreCount;
+    document.getElementById('result-wrong').textContent = total - scoreCount;
+    document.getElementById('result-total').textContent = total;
+
+    const emojis = pct >= 90 ? '🏆' : pct >= 70 ? '🎉' : pct >= 50 ? '💪' : '🔄';
+    const subtitles = pct >= 90 ? 'Exceptional work! You\'re mastering this.' : pct >= 70 ? 'Great session! Keep it up.' : pct >= 50 ? 'Good effort! Practice makes perfect.' : 'Keep going — every attempt counts!';
+    document.getElementById('result-emoji').textContent = emojis;
+    document.getElementById('result-subtitle').textContent = subtitles;
+
+    // Update streak/stats in localStorage
+    try {
+        const today = new Date().toDateString();
+        const stats = JSON.parse(localStorage.getItem('hanzipath_stats') || '{}');
+        stats.mastered = (stats.mastered || 0) + scoreCount;
+        if (stats.lastDate !== today) {
+            stats.streak = stats.lastDate === new Date(Date.now()-86400000).toDateString() ? (stats.streak||0)+1 : 1;
+            stats.lastDate = today;
         }
-        function toggleSpeech() { if(isListening) recognition.stop(); else recognition.start(); }
-        function stopSpeech() { if(isListening) recognition.stop(); }
+        localStorage.setItem('hanzipath_stats', JSON.stringify(stats));
+        document.getElementById('streak-display').textContent = stats.streak || 1;
+        document.getElementById('words-learned-display').textContent = stats.mastered || scoreCount;
+    } catch(e) {}
 
-        // ==========================================
-        // MODE 2: WRITING LOGIC (HANZI WRITER)
-        // ==========================================
-        let writer;
-        let writeCorrect = 0;
-        let isHintVisible = false; // Variable pelacak Hint
+    switchScreen('result');
 
-        function initWritingMode() {
-            writeCorrect = 0;
-            switchScreen('writing');
-            document.getElementById('write-total').innerText = sessionWords.length;
-            loadWritingCard();
-        }
+    // Animate score ring
+    setTimeout(() => {
+        const ring = document.getElementById('score-ring-fill');
+        const offset = 376.99 * (1 - pct / 100);
+        ring.style.strokeDashoffset = offset;
+        ring.style.stroke = pct >= 70 ? 'var(--gold)' : 'var(--red-bright)';
+    }, 100);
+}
 
-        function loadWritingCard() {
-            currentWord = sessionWords[currentIndex];
-            document.getElementById('write-current').innerText = currentIndex + 1;
-            document.getElementById('write-pinyin').innerText = currentWord.pinyin;
-            document.getElementById('write-mean').innerText = currentWord.mean;
-            
-            // Reset UI
-            document.getElementById('write-feedback').style.opacity = "0";
-            document.getElementById('btn-write-next').classList.add('hidden');
-            document.getElementById('target-div').innerHTML = ""; 
-            
-            // Reset Hint UI
-            isHintVisible = false;
-            updateHintButtonUI();
+// =====================================================================
+// MULTIPLE CHOICE MODE
+// =====================================================================
+let mcCorrect = 0;
+let allWordsPool = []; // for generating wrong options
 
-            // Initialize Hanzi Writer QUIZ
-            const charToDraw = currentWord.char.charAt(0);
+function initMCMode() {
+    mcCorrect = 0;
+    // Build a pool of all words from all levels for wrong option generation
+    if (typeof database !== 'undefined') {
+        allWordsPool = [...database[1], ...database[2], ...database[3]];
+        // Deduplicate by char
+        const seen = new Set();
+        allWordsPool = allWordsPool.filter(w => { if (seen.has(w.char)) return false; seen.add(w.char); return true; });
+    }
+    switchScreen('mc');
+    loadMCCard();
+}
 
-            writer = HanziWriter.create('target-div', charToDraw, {
-                width: 250,
-                height: 250,
-                padding: 10,
-                showOutline: false, // Default: No Outline (Expert Mode)
-                strokeAnimationSpeed: 1,
-                delayBetweenStrokes: 200,
-                strokeColor: '#4f46e5', // Indigo stroke
-                highlightColor: '#10b981', // Green when correct stroke
-                outlineColor: '#cbd5e1', // Light grey guide for hint
-                drawingWidth: 20, 
-                showCharacter: false 
-            });
+function loadMCCard() {
+    currentWord = sessionWords[currentIndex];
+    document.getElementById('mc-char').textContent = currentWord.char;
+    document.getElementById('mc-pinyin').textContent = displayPinyin(currentWord.pinyin);
+    document.getElementById('mc-feedback').innerHTML = '';
+    document.getElementById('btn-mc-next').classList.add('hidden');
+    document.getElementById('card-mc').classList.remove('anim-shake');
+    updateProgress('mc');
 
-            // START QUIZ
-            writer.quiz({
-                onMistake: function(strokeData) { console.log('Mistake'); },
-                onCorrectStroke: function(strokeData) { console.log('Correct stroke'); },
-                onComplete: function(summaryData) { handleWritingSuccess(); }
-            });
-        }
+    // Build 4 options: 1 correct + 3 random wrong
+    const correctMeaning = currentWord.mean;
+    const wrongPool = allWordsPool.filter(w => w.char !== currentWord.char && w.mean !== correctMeaning);
+    const shuffledWrong = wrongPool.sort(() => 0.5 - Math.random()).slice(0, 3);
+    const options = [{ mean: correctMeaning, correct: true }, ...shuffledWrong.map(w => ({ mean: w.mean, correct: false }))];
+    options.sort(() => 0.5 - Math.random());
 
-        function toggleHint() {
-            if (!writer) return;
-            if (isHintVisible) {
-                writer.hideOutline();
-                isHintVisible = false;
-            } else {
-                writer.showOutline();
-                isHintVisible = true;
-            }
-            updateHintButtonUI();
-        }
+    const letters = ['A', 'B', 'C', 'D'];
+    const container = document.getElementById('mc-options');
+    container.innerHTML = '';
+    options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'mc-option';
+        btn.innerHTML = `<span class="mc-letter">${letters[i]}</span><span style="font-size:0.9rem; color:rgba(255,255,255,0.85); flex:1;">${opt.mean}</span>`;
+        btn.onclick = () => handleMCAnswer(btn, opt.correct, options, container);
+        container.appendChild(btn);
+    });
+}
 
-        function updateHintButtonUI() {
-            const btn = document.getElementById('btn-hint');
-            if (isHintVisible) {
-                btn.innerHTML = `<i class="fas fa-eye-slash mr-1"></i> Hide`;
-                btn.className = "flex-1 bg-yellow-200 text-yellow-800 font-bold py-3 rounded-xl hover:bg-yellow-300 transition text-sm shadow-inner";
-            } else {
-                btn.innerHTML = `<i class="fas fa-lightbulb mr-1"></i> Hint`;
-                btn.className = "flex-1 bg-yellow-50 text-yellow-600 font-bold py-3 rounded-xl hover:bg-yellow-100 transition text-sm";
-            }
-        }
+function handleMCAnswer(clickedBtn, isCorrect, options, container) {
+    // Disable all buttons
+    container.querySelectorAll('.mc-option').forEach(b => b.disabled = true);
 
-        function handleWritingSuccess() {
-            writeCorrect++;
-            const elFeed = document.getElementById('write-feedback');
-            elFeed.innerText = "Perfect! Character Complete.";
-            elFeed.style.opacity = "1";
-            
-            playAudio(currentWord.char);
-            document.getElementById('btn-write-next').classList.remove('hidden');
-        }
+    const fb = document.getElementById('mc-feedback');
+    if (isCorrect) {
+        mcCorrect++;
+        clickedBtn.classList.add('correct');
+        fb.innerHTML = `<span style="color:var(--jade-bright)">✓ Correct! — ${displayPinyin(currentWord.pinyin)}</span>`;
+        playAudio(currentWord.char);
+    } else {
+        clickedBtn.classList.add('wrong');
+        // Reveal correct answer
+        container.querySelectorAll('.mc-option').forEach(b => {
+            const textEl = b.querySelector('span:last-child');
+            if (textEl && textEl.textContent === currentWord.mean) b.classList.add('reveal');
+        });
+        fb.innerHTML = `<span style="color:#ff8080">✗ Wrong — Correct: ${currentWord.mean} (${displayPinyin(currentWord.pinyin)})</span>`;
+        document.getElementById('card-mc').classList.add('anim-shake');
+    }
+    document.getElementById('btn-mc-next').classList.remove('hidden');
+}
 
-        function nextWritingWord() {
-            if(currentIndex < sessionWords.length - 1) {
-                currentIndex++;
-                loadWritingCard();
-            } else {
-                finishSession(writeCorrect);
-            }
-        }
+function nextMCWord() {
+    if (currentIndex < sessionWords.length - 1) {
+        currentIndex++;
+        loadMCCard();
+    } else {
+        finishSession(mcCorrect);
+    }
+}
 
-        function animateWriter() { if(writer) writer.animateCharacter(); }
-        function resetWriter() { loadWritingCard(); } // Reload to reset quiz
+// =====================================================================
+// VOCAB BROWSER
+// =====================================================================
+let vocabFilterLevel = 'all';
+let vocabAllWords = [];
 
-        // ==========================================
-        // UTILS & SHARED
-        // ==========================================
-        function finishSession(scoreCount) {
-            switchScreen('result');
-            const accuracy = Math.round((scoreCount / sessionWords.length) * 100);
-            document.getElementById('result-score').innerText = `${accuracy}%`;
-        }
+function openVocabBrowser() {
+    if (typeof database === 'undefined') return;
 
-        function playAudio(text) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = "zh-CN"; 
-            utterance.rate = 0.8;
-            window.speechSynthesis.speak(utterance);
-        }
+    // Build annotated list with level info
+    const lvl1Set = new Set(database[1].map(w => w.char));
+    const lvl2Only = new Set(database[2].filter(w => !lvl1Set.has(w.char)).map(w => w.char));
+    const lvl3Only = new Set(database[3].filter(w => {
+        return !lvl1Set.has(w.char) && !lvl2Only.has(w.char);
+    }).map(w => w.char));
 
-        function addTone(num) { 
-            const inp = document.getElementById('quiz-input');
-            inp.value += num; 
-            inp.focus(); 
-        }
-        
-        // Window Load Check
-        window.onload = function() {
-            if(typeof database === 'undefined') {
-                document.getElementById('db-status').innerText = "❌ Database Error";
-                document.getElementById('db-status').className = "mt-8 text-red-500 font-bold";
-            } else {
-                document.getElementById('db-status').innerText = "System Ready v3.5";
-                document.getElementById('db-status').className = "mt-8 text-emerald-500 font-bold";
-            }
-        };
-    </script>
+    vocabAllWords = database[3].map(w => {
+        let lvl = 3;
+        if (lvl1Set.has(w.char)) lvl = 1;
+        else if (lvl2Only.has(w.char)) lvl = 2;
+        return { ...w, level: lvl };
+    });
+
+    vocabFilterLevel = 'all';
+    document.querySelectorAll('.filter-tab').forEach((t, i) => t.classList.toggle('active', i === 0));
+    document.getElementById('vocab-search-input').value = '';
+    document.getElementById('vocab-subtitle').textContent = `${vocabAllWords.length} words · HSK 1–3`;
+    renderVocabList(vocabAllWords);
+    switchScreen('vocab');
+}
+
+function closeVocabBrowser() { switchScreen('mode'); }
+
+function setVocabFilter(level, tabEl) {
+    vocabFilterLevel = level;
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    tabEl.classList.add('active');
+    filterVocab();
+}
+
+function filterVocab() {
+    const query = document.getElementById('vocab-search-input').value.toLowerCase().trim();
+    let filtered = vocabAllWords;
+
+    if (vocabFilterLevel !== 'all') {
+        filtered = filtered.filter(w => w.level === vocabFilterLevel);
+    }
+    if (query) {
+        filtered = filtered.filter(w =>
+            w.char.includes(query) ||
+            w.pinyin.toLowerCase().includes(query) ||
+            w.mean.toLowerCase().includes(query)
+        );
+    }
+    renderVocabList(filtered);
+}
+
+const levelColors = { 1: 'var(--jade-bright)', 2: '#8ecae6', 3: 'var(--gold-light)' };
+const levelLabels = { 1: 'HSK1', 2: 'HSK2', 3: 'HSK3' };
+
+function renderVocabList(words) {
+    const container = document.getElementById('vocab-list');
+    document.getElementById('vocab-count').textContent = `${words.length} word${words.length !== 1 ? 's' : ''}`;
+
+    if (words.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:40px; color:rgba(255,255,255,0.25); font-size:0.85rem;">No results found</div>`;
+        return;
+    }
+
+    container.innerHTML = words.map((w, i) => `
+        <div class="vocab-row" style="animation: fadeSlideUp 0.3s ${Math.min(i, 20) * 0.015}s both;">
+            <div class="vocab-char-cell">${w.char}</div>
+            <div class="vocab-detail">
+                <div class="vocab-pinyin">${displayPinyin(w.pinyin)}</div>
+                <div class="vocab-mean">${w.mean}</div>
+            </div>
+            <div class="badge" style="font-size:0.6rem; background:transparent; border-color:${levelColors[w.level]}22; color:${levelColors[w.level]}; padding:3px 8px; flex-shrink:0;">${levelLabels[w.level]}</div>
+            <button class="vocab-audio-btn" onclick="event.stopPropagation(); playAudio('${w.char.replace(/'/g,"\\'")}')">
+                <i class="fas fa-volume-up"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+// =====================================================================
+// UTILS
+// =====================================================================
+function playAudio(text) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN';
+    u.rate = 0.8;
+    window.speechSynthesis.speak(u);
+}
+
+// =====================================================================
+// INIT
+// =====================================================================
+window.onload = function() {
+    const el = document.getElementById('db-status');
+    if (typeof database === 'undefined') {
+        el.textContent = '❌ database.js not found';
+        el.style.color = 'var(--red-bright)';
+    } else {
+        el.textContent = 'v4.0 · system ready';
+        el.style.color = 'var(--jade-bright)';
+    }
+
+    // Load saved stats
+    try {
+        const stats = JSON.parse(localStorage.getItem('hanzipath_stats') || '{}');
+        document.getElementById('streak-display').textContent = stats.streak || 0;
+        document.getElementById('words-learned-display').textContent = stats.mastered || 0;
+    } catch(e) {}
+};
+</script>
 </body>
 </html>
